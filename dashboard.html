@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+{% block title %}Therapist Dashboard — SafeVoice{% endblock %}
+{% block extra_css %}
+<style>
+.dash { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+.dash-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:2rem; flex-wrap:wrap; gap:1rem; }
+.dash-header h1 { font-family:'Cormorant Garamond',serif; font-size:2rem; font-weight:400; }
+
+/* STATS */
+.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1rem; margin-bottom:2rem; }
+.stat { background:#fff; border-radius:14px; padding:1.3rem; box-shadow:0 2px 12px rgba(0,0,0,0.06); border-left:4px solid transparent; }
+.stat.green { border-color:#10b981; } .stat.amber { border-color:#f59e0b; }
+.stat.red   { border-color:#ef4444; } .stat.blue  { border-color:#3b82f6; }
+.stat .num  { font-family:'Cormorant Garamond',serif; font-size:2.2rem; font-weight:600; }
+.stat .lbl  { font-size:0.78rem; color:var(--slate); font-weight:600; }
+
+/* TABS */
+.tabs { display:flex; border-bottom:2px solid #e5e7eb; margin-bottom:1.5rem; gap:0; overflow-x:auto; }
+.tab-btn {
+  padding:0.6rem 1.2rem; border:none; background:transparent;
+  font-family:'DM Sans',sans-serif; font-size:0.9rem; font-weight:600;
+  color:var(--slate); cursor:pointer; border-bottom:2px solid transparent;
+  margin-bottom:-2px; transition:all 0.2s; white-space:nowrap;
+}
+.tab-btn.active { color:var(--ink); border-bottom-color:var(--ink); }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+
+/* SESSION CARDS */
+.sess-list { display:flex; flex-direction:column; gap:0.8rem; }
+.sess-card {
+  background:#fff; border-radius:14px; padding:1.2rem 1.4rem;
+  border:1px solid #e5e7eb; display:flex; align-items:flex-start; gap:1rem;
+  transition:all 0.2s;
+}
+.sess-card:hover { border-color:var(--blush); box-shadow:0 4px 16px rgba(0,0,0,0.06); }
+.sess-card.high-risk { border-left:4px solid #ef4444; }
+.sess-left { flex:1; min-width:0; }
+.sess-alias { font-weight:700; font-size:0.95rem; }
+.sess-meta  { font-size:0.78rem; color:var(--slate); margin-top:0.25rem; display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center; }
+.sess-preview { font-size:0.82rem; color:var(--slate); margin-top:0.4rem; line-height:1.5; font-style:italic; }
+.sess-actions { display:flex; gap:0.5rem; flex-shrink:0; flex-wrap:wrap; align-items:flex-start; }
+
+.sessions-count {
+  display:inline-flex; align-items:center; gap:0.3rem;
+  background:#dbeafe; color:#1d4ed8; font-size:0.72rem; font-weight:700;
+  padding:0.2rem 0.6rem; border-radius:20px;
+}
+
+/* NOTIFICATION TOAST */
+.toast {
+  position:fixed; top:80px; right:20px; z-index:9999;
+  background:#0f1923; color:#fff; border-radius:16px;
+  padding:1.1rem 1.4rem; max-width:340px; min-width:280px;
+  box-shadow:0 12px 40px rgba(0,0,0,0.35);
+  display:none; animation:toastIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes toastIn { from{transform:translateX(120px);opacity:0} to{transform:translateX(0);opacity:1} }
+.toast-top { display:flex; align-items:center; gap:0.7rem; margin-bottom:0.8rem; }
+.toast-icon { width:36px;height:36px;border-radius:50%;background:rgba(244,168,181,0.2);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0; }
+.toast-title { font-weight:700; font-size:0.92rem; }
+.toast-sub   { font-size:0.78rem; color:rgba(255,255,255,0.6); }
+.toast-btns  { display:flex; gap:0.5rem; }
+.toast-accept { flex:1; padding:0.55rem; background:#10b981; color:#fff; border:none; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:0.85rem; font-weight:700; cursor:pointer; transition:background 0.2s; }
+.toast-accept:hover { background:#059669; }
+.toast-dismiss { padding:0.55rem 0.8rem; background:rgba(255,255,255,0.1); color:#fff; border:none; border-radius:8px; font-size:0.85rem; cursor:pointer; }
+
+/* ACCEPT MODAL */
+.modal-bg {
+  display:none; position:fixed; inset:0; background:rgba(15,25,35,0.75);
+  z-index:9998; align-items:center; justify-content:center;
+  backdrop-filter:blur(4px);
+}
+.modal-box {
+  background:#fff; border-radius:22px; padding:2rem; max-width:480px; width:90%;
+  animation:popUp 0.35s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes popUp { from{transform:scale(0.85);opacity:0} to{transform:scale(1);opacity:1} }
+.modal-box h3 { font-family:'Cormorant Garamond',serif; font-size:1.5rem; font-weight:500; margin-bottom:0.4rem; }
+.modal-box p  { font-size:0.88rem; color:var(--slate); margin-bottom:1.2rem; }
+.meet-input {
+  width:100%; padding:0.8rem 1rem; border-radius:10px; border:2px solid #e5e7eb;
+  font-family:'DM Sans',sans-serif; font-size:0.9rem; margin-bottom:0.5rem;
+  transition:border 0.2s;
+}
+.meet-input:focus { outline:none; border-color:#3b82f6; }
+.meet-hint { font-size:0.75rem; color:var(--slate); margin-bottom:1.2rem; }
+.modal-btns { display:flex; gap:0.8rem; }
+.btn-confirm { flex:1; padding:0.85rem; background:var(--sage); color:#fff; border:none; border-radius:10px; font-family:'DM Sans',sans-serif; font-size:0.95rem; font-weight:700; cursor:pointer; }
+.btn-cancel  { padding:0.85rem 1.2rem; background:#f3f4f6; color:#374151; border:none; border-radius:10px; font-family:'DM Sans',sans-serif; font-size:0.9rem; font-weight:600; cursor:pointer; }
+
+.empty-state { text-align:center; padding:3rem 2rem; color:var(--slate); }
+.empty-state .e-icon { font-size:2.8rem; margin-bottom:0.8rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- NOTIFICATION TOAST (real-time) -->
+<div class="toast" id="toast">
+  <div class="toast-top">
+    <div class="toast-icon">🔔</div>
+    <div>
+      <div class="toast-title" id="toast-title">New Session Request</div>
+      <div class="toast-sub" id="toast-sub">A survivor needs support</div>
+    </div>
+  </div>
+  <div class="toast-btns">
+    <button class="toast-accept" id="toast-accept-btn" onclick="openAcceptModal()">Accept Session</button>
+    <button class="toast-dismiss" onclick="dismissToast()">Later</button>
+  </div>
+</div>
+
+<!-- ACCEPT MODAL (with Google Meet link field) -->
+<div class="modal-bg" id="accept-modal">
+  <div class="modal-box">
+    <h3>Accept This Session</h3>
+    <p>Optionally paste a Google Meet or Zoom link. The survivor will receive it directly in their chat as soon as you accept.</p>
+    <input class="meet-input" id="meet-link-input" type="url"
+           placeholder="https://meet.google.com/abc-defg-hij  (optional)"/>
+    <div class="meet-hint">💡 You can also add/change this link later from inside the session.</div>
+    <div class="modal-btns">
+      <button class="btn-confirm" onclick="confirmAccept()">✅ Accept &amp; Open Session</button>
+      <button class="btn-cancel"  onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="dash">
+  <!-- HEADER -->
+  <div class="dash-header">
+    <div>
+      <h1>Therapist Dashboard</h1>
+      <p style="color:var(--slate);font-size:0.9rem">Welcome, {{ current_user.full_name or current_user.username }}</p>
+    </div>
+    <div style="display:flex;gap:0.8rem;align-items:center">
+      <a href="/therapist/slots" style="background:#dbeafe;color:#1d4ed8;padding:0.4rem 1rem;border-radius:20px;font-size:0.82rem;font-weight:700;text-decoration:none;">📅 Manage Slots</a>
+      <span style="background:#d1fae5;color:#065f46;padding:0.3rem 1rem;border-radius:20px;font-size:0.82rem;font-weight:700;">✅ Approved Therapist</span>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat green">
+      <div class="num">{{ my_sessions | selectattr('status','eq','Resolved') | list | length }}</div>
+      <div class="lbl">Sessions Resolved</div>
+    </div>
+    <div class="stat amber">
+      <div class="num">{{ my_sessions | selectattr('status','eq','Assigned') | list | length }}</div>
+      <div class="lbl">Active Sessions</div>
+    </div>
+    <div class="stat blue">
+      <div class="num">{{ my_sessions | length }}</div>
+      <div class="lbl">Total Sessions</div>
+    </div>
+    <div class="stat red">
+      <div class="num">{{ pending | length }}</div>
+      <div class="lbl">Pending Requests</div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('pending',this)">
+      📥 Pending
+      {% if pending %}<span style="background:#ef4444;color:#fff;border-radius:20px;font-size:0.7rem;padding:0.1rem 0.5rem;margin-left:0.4rem">{{ pending|length }}</span>{% endif %}
+    </button>
+    <button class="tab-btn" onclick="showTab('mine',this)">💼 My Sessions ({{ my_sessions|length }})</button>
+    <button class="tab-btn" onclick="showTab('high',this)">🆘 High Risk ({{ high_risk|length }})</button>
+  </div>
+
+  <!-- ── PENDING TAB ── -->
+  <div id="tab-pending" class="tab-panel active">
+    <div style="font-size:0.78rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--slate);margin-bottom:1rem">
+      Waiting for a therapist — accept to open the session
+    </div>
+    {% if pending %}
+    <div class="sess-list" id="pending-list">
+      {% for sess in pending %}
+      <div class="sess-card {% if sess.risk_level=='High' %}high-risk{% endif %}" id="sc-{{ sess.session_uuid }}">
+        <div class="sess-left">
+          <div class="sess-alias">
+            {{ sess.alias or 'Anonymous' }}
+            {% if sess.risk_level == 'High' %}<span class="badge-high" style="margin-left:0.5rem">HIGH</span>
+            {% elif sess.risk_level == 'Moderate' %}<span class="badge-moderate" style="margin-left:0.5rem">MODERATE</span>
+            {% else %}<span class="badge-low" style="margin-left:0.5rem">LOW</span>{% endif %}
+          </div>
+          <div class="sess-meta">
+            <span>Severity: <strong>{{ (sess.severity_score * 100)|int if sess.severity_score and sess.severity_score <= 1 else (sess.severity_score|int) }}/100</strong></span>
+            <span>·</span>
+            <span>{{ sess.created_at.strftime('%b %d, %H:%M') }}</span>
+            {% if sess.is_paid %}<span style="background:#d1fae5;color:#065f46;padding:0.1rem 0.5rem;border-radius:10px;font-size:0.7rem;font-weight:700">💳 Paid</span>{% endif %}
+          </div>
+          <div class="sess-preview">"{{ sess.input_text[:150] }}{% if sess.input_text|length > 150 %}…{% endif %}"</div>
+        </div>
+        <div class="sess-actions">
+          <button class="btn btn-sage btn-sm"
+                  onclick="startAcceptFlow('{{ sess.session_uuid }}')">
+            Accept →
+          </button>
+          <a href="/therapist/session/{{ sess.session_uuid }}" class="btn btn-outline btn-sm">View</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="e-icon">✅</div>
+      <p>No pending sessions right now.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── MY SESSIONS TAB ── -->
+  <div id="tab-mine" class="tab-panel">
+    <div style="font-size:0.78rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--slate);margin-bottom:1rem">
+      Your assigned sessions
+    </div>
+    {% if my_sessions %}
+    <div class="sess-list">
+      {% for sess in my_sessions %}
+      <div class="sess-card">
+        <div class="sess-left">
+          <div class="sess-alias">{{ sess.alias or 'Anonymous' }}</div>
+          <div class="sess-meta">
+            {% if sess.risk_level == 'High' %}<span class="badge-high">High</span>
+            {% elif sess.risk_level == 'Moderate' %}<span class="badge-moderate">Moderate</span>
+            {% else %}<span class="badge-low">Low</span>{% endif %}
+            <span>·</span>
+            <span>Status: <strong>{{ sess.status }}</strong></span>
+            <span>·</span>
+            <span class="sessions-count">🎯 {{ sess.chat_messages|length if sess.chat_messages else 0 }} sessions held</span>
+            <span>·</span>
+            <span>{{ sess.created_at.strftime('%b %d') }}</span>
+          </div>
+          {% if sess.meet_link %}
+          <div style="font-size:0.78rem;color:#3b82f6;margin-top:0.3rem">
+            🎥 Meet: <a href="{{ sess.meet_link }}" target="_blank" style="color:#3b82f6">{{ sess.meet_link[:50] }}{% if sess.meet_link|length > 50 %}…{% endif %}</a>
+          </div>
+          {% endif %}
+        </div>
+        <div class="sess-actions">
+          <a href="/therapist/session/{{ sess.session_uuid }}" class="btn btn-primary btn-sm">Open →</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="e-icon">📭</div>
+      <p>You haven't accepted any sessions yet.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── HIGH RISK TAB ── -->
+  <div id="tab-high" class="tab-panel">
+    <div style="font-size:0.78rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#ef4444;margin-bottom:1rem">
+      ⚠️ These cases need immediate attention
+    </div>
+    {% if high_risk %}
+    <div class="sess-list">
+      {% for sess in high_risk %}
+      <div class="sess-card high-risk">
+        <div class="sess-left">
+          <div class="sess-alias">{{ sess.alias or 'Anonymous' }} <span class="badge-high">HIGH RISK</span></div>
+          <div class="sess-meta">
+            <span>Severity: <strong>{{ (sess.severity_score * 100)|int if sess.severity_score and sess.severity_score <= 1 else (sess.severity_score|int) }}/100</strong></span>
+            <span>·</span>
+            <span>{{ sess.status }}</span>
+            <span>·</span>
+            <span>{{ sess.created_at.strftime('%b %d, %H:%M') }}</span>
+          </div>
+          <div class="sess-preview">"{{ sess.input_text[:150] }}…"</div>
+        </div>
+        <div class="sess-actions">
+          <button class="btn btn-rose btn-sm" onclick="startAcceptFlow('{{ sess.session_uuid }}')">Respond Now →</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="e-icon">💚</div>
+      <p>No high-risk cases right now.</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div><!-- end dash -->
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const socket = io();
+socket.emit('join_therapist_room');
+
+let pendingAcceptUUID = null;
+
+// ── REAL-TIME NOTIFICATION ─────────────────────────────────────────
+socket.on('new_session', data => {
+  pendingAcceptUUID = data.session_uuid;
+  document.getElementById('toast-title').textContent =
+    `🔔 New ${data.risk_level} Risk Session`;
+  document.getElementById('toast-sub').textContent =
+    `${data.alias || 'Anonymous'} needs support right now`;
+  showToast();
+});
+
+socket.on('session_accepted_dashboard', data => {
+  // Remove from pending list if another therapist accepted
+  document.getElementById('sc-' + data.session_uuid)?.remove();
+});
+
+function showToast() {
+  const t = document.getElementById('toast');
+  t.style.display = 'block';
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(dismissToast, 15000);
+}
+
+function dismissToast() {
+  document.getElementById('toast').style.display = 'none';
+}
+
+// ── ACCEPT FLOW ────────────────────────────────────────────────────
+function startAcceptFlow(uuid) {
+  pendingAcceptUUID = uuid;
+  document.getElementById('meet-link-input').value = '';
+  document.getElementById('accept-modal').style.display = 'flex';
+}
+
+function openAcceptModal() {
+  dismissToast();
+  document.getElementById('meet-link-input').value = '';
+  document.getElementById('accept-modal').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('accept-modal').style.display = 'none';
+}
+
+async function confirmAccept() {
+  if (!pendingAcceptUUID) return;
+  const meetLink = document.getElementById('meet-link-input').value.trim();
+
+  const res = await fetch(`/api/therapist/accept/${pendingAcceptUUID}`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ meet_link: meetLink }),
+  });
+  const data = await res.json();
+  closeModal();
+
+  if (data.success) {
+    // Remove from pending list
+    document.getElementById('sc-' + pendingAcceptUUID)?.remove();
+    // Go to session
+    window.location.href = `/therapist/session/${pendingAcceptUUID}`;
+  } else {
+    alert('Could not accept session. Please try again.');
+  }
+}
+
+// ── TABS ───────────────────────────────────────────────────────────
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// Close modal on backdrop click
+document.getElementById('accept-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+</script>
+{% endblock %}
