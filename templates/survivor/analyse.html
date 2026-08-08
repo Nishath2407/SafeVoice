@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SafeVoice — Tell Us How You Feel</title>
+<style>
+:root {
+  --purple: #7c3aed; --lavender: #c4b5fd; --pink: #fda4af;
+  --mint: #6ee7b7; --bg: #0f0a1e; --card: rgba(255,255,255,0.07);
+  --border: rgba(255,255,255,0.12); --text: rgba(255,255,255,0.88);
+  --muted: rgba(255,255,255,0.5);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  min-height:100vh; font-family:'Segoe UI',system-ui,sans-serif;
+  background: linear-gradient(135deg,#0f0a1e 0%,#1e0545 50%,#0a1628 100%);
+  color:var(--text); padding-bottom:3rem;
+}
+
+/* ─ Floating particles ─ */
+.particles { position:fixed; inset:0; overflow:hidden; pointer-events:none; z-index:0; }
+.p { position:absolute; border-radius:50%; animation:drift linear infinite; opacity:0.15; }
+@keyframes drift {
+  0%  { transform:translateY(100vh) scale(0); opacity:0; }
+  10% { opacity:0.15; }
+  90% { opacity:0.15; }
+  100%{ transform:translateY(-100px) scale(1); opacity:0; }
+}
+
+/* ─ Layout ─ */
+.wrap { position:relative; z-index:1; max-width:760px; margin:0 auto; padding:0 1.2rem; }
+
+/* ─ Top bar ─ */
+.topbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:1.1rem 1.5rem; border-bottom:1px solid var(--border);
+  background:rgba(255,255,255,0.03); backdrop-filter:blur(8px);
+  position:sticky; top:0; z-index:50;
+}
+.logo { font-size:1.2rem; font-weight:700; color:var(--lavender); letter-spacing:1px; }
+.logo span { color:var(--pink); }
+.back-btn {
+  font-size:.85rem; color:var(--muted); text-decoration:none;
+  display:flex; align-items:center; gap:.4rem; transition:color .2s;
+}
+.back-btn:hover { color:var(--lavender); }
+
+/* ─ Hero ─ */
+.hero { text-align:center; padding:2.5rem 1rem 1.5rem; }
+.alias-badge {
+  display:inline-flex; align-items:center; gap:.5rem;
+  padding:.4rem 1.1rem; border-radius:30px;
+  background:rgba(196,181,253,0.12); border:1px solid rgba(196,181,253,0.25);
+  font-size:.82rem; color:var(--lavender); margin-bottom:1.2rem;
+}
+.hero h1 { font-size:clamp(1.6rem,4vw,2.4rem); font-weight:800; margin-bottom:.8rem; }
+.hero h1 span { color:var(--lavender); }
+.hero p { font-size:.95rem; color:var(--muted); line-height:1.7; max-width:500px; margin:0 auto; }
+
+/* ─ Tab switcher ─ */
+.tabs {
+  display:flex; background:rgba(255,255,255,0.05); border:1px solid var(--border);
+  border-radius:16px; padding:4px; margin:1.5rem 0; gap:4px;
+}
+.tab {
+  flex:1; padding:.65rem; border-radius:12px; border:none; cursor:pointer;
+  font-size:.9rem; font-weight:500; color:var(--muted); background:transparent; transition:all .2s;
+}
+.tab.active { background:linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff; font-weight:600; }
+.tab:hover:not(.active) { color:var(--lavender); }
+
+/* ─ Input card ─ */
+.input-card {
+  background:var(--card); border:1px solid var(--border); border-radius:20px;
+  padding:1.5rem; margin-bottom:1.2rem;
+}
+.input-label { font-size:.8rem; color:var(--muted); letter-spacing:1px; text-transform:uppercase; margin-bottom:.7rem; }
+textarea {
+  width:100%; min-height:150px; padding:1rem; border-radius:14px;
+  border:1px solid var(--border); background:rgba(255,255,255,0.05);
+  color:#fff; font-size:.95rem; font-family:inherit; resize:vertical; outline:none;
+  line-height:1.6; transition:border .2s;
+}
+textarea:focus { border-color:var(--lavender); }
+textarea::placeholder { color:rgba(255,255,255,0.28); }
+.char-count { text-align:right; font-size:.75rem; color:var(--muted); margin-top:.4rem; }
+
+/* ─ Voice recorder ─ */
+.voice-section { display:none; text-align:center; padding:1rem 0; }
+.voice-section.active { display:block; }
+.rec-btn {
+  width:100px; height:100px; border-radius:50%; border:3px solid rgba(253,164,175,0.4);
+  background:rgba(253,164,175,0.08); cursor:pointer; font-size:2.2rem;
+  margin:0 auto 1rem; display:flex; align-items:center; justify-content:center;
+  transition:all .25s; animation:none;
+}
+.rec-btn.recording {
+  border-color:#ef4444; background:rgba(239,68,68,0.15);
+  animation:recpulse 1.2s ease-in-out infinite;
+}
+@keyframes recpulse {
+  0%,100%{ box-shadow:0 0 0 0 rgba(239,68,68,0.4); }
+  50%    { box-shadow:0 0 0 20px rgba(239,68,68,0); }
+}
+.rec-status { font-size:.9rem; color:var(--muted); }
+.rec-timer  { font-size:1.8rem; font-weight:700; color:var(--pink); margin:.5rem 0; }
+.transcribed-box {
+  background:rgba(255,255,255,0.05); border:1px solid var(--border);
+  border-radius:12px; padding:1rem; margin-top:1rem;
+  font-size:.9rem; color:var(--text); min-height:60px; text-align:left;
+  display:none;
+}
+.transcribed-box.show { display:block; }
+
+/* ─ Submit btn ─ */
+.submit-btn {
+  width:100%; padding:1rem; border-radius:16px; border:none;
+  background:linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff;
+  font-size:1rem; font-weight:700; cursor:pointer; transition:all .25s;
+  letter-spacing:.5px; display:flex; align-items:center; justify-content:center; gap:.6rem;
+}
+.submit-btn:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 8px 30px rgba(124,58,237,0.4); }
+.submit-btn:disabled { opacity:.5; cursor:not-allowed; }
+.submit-btn .spinner {
+  width:18px; height:18px; border:2px solid rgba(255,255,255,0.3);
+  border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; display:none;
+}
+.submit-btn.loading .spinner { display:block; }
+.submit-btn.loading .btn-text { display:none; }
+@keyframes spin { to{ transform:rotate(360deg); } }
+
+/* ─ Privacy note ─ */
+.privacy { text-align:center; font-size:.78rem; color:rgba(255,255,255,.35); margin-top:.8rem; }
+
+/* ─ Result panel ─ */
+#resultPanel { display:none; margin-top:1.5rem; animation:fadeUp .4s ease; }
+#resultPanel.show { display:block; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+.risk-banner {
+  border-radius:20px; padding:1.5rem; margin-bottom:1rem; text-align:center;
+}
+.risk-banner .risk-icon { font-size:2.8rem; margin-bottom:.5rem; }
+.risk-banner h2 { font-size:1.4rem; font-weight:800; margin-bottom:.4rem; }
+.risk-banner .risk-label { font-size:.85rem; opacity:.8; }
+.risk-banner.Low      { background:rgba(16,185,129,.12); border:1px solid rgba(16,185,129,.3); }
+.risk-banner.Moderate { background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.3); }
+.risk-banner.High     { background:rgba(239,68,68,.12);  border:1px solid rgba(239,68,68,.3); }
+
+/* Severity meter */
+.severity-row { display:flex; align-items:center; gap:1rem; margin-bottom:1rem; }
+.severity-bar-bg {
+  flex:1; height:10px; border-radius:6px; background:rgba(255,255,255,0.1);
+  overflow:hidden;
+}
+.severity-bar-fill { height:100%; border-radius:6px; transition:width 1s ease; width:0%; }
+.severity-pct { font-size:.85rem; color:var(--lavender); font-weight:700; min-width:36px; text-align:right; }
+
+/* Emotion chart */
+.emotions-card {
+  background:var(--card); border:1px solid var(--border); border-radius:16px;
+  padding:1.2rem; margin-bottom:1rem;
+}
+.emotions-card h3 { font-size:.85rem; color:var(--muted); letter-spacing:1px;
+  text-transform:uppercase; margin-bottom:1rem; }
+.emotion-row { display:flex; align-items:center; gap:.8rem; margin-bottom:.7rem; }
+.emotion-label { width:70px; font-size:.83rem; color:var(--text); text-transform:capitalize; flex-shrink:0; }
+.emotion-bar-bg { flex:1; height:8px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden; }
+.emotion-bar-fill { height:100%; border-radius:4px; transition:width 1s ease; width:0%; }
+.emotion-pct { font-size:.75rem; color:var(--muted); min-width:36px; text-align:right; }
+
+/* Action card */
+.action-card {
+  background:var(--card); border:1px solid var(--border); border-radius:16px;
+  padding:1.2rem 1.4rem; margin-bottom:1rem;
+}
+.action-card h3 { font-size:.85rem; color:var(--muted); letter-spacing:1px; text-transform:uppercase; margin-bottom:.8rem; }
+.action-card p { font-size:.88rem; color:var(--text); line-height:1.7; white-space:pre-line; }
+
+/* Safe name pill */
+.safe-name-card {
+  background:rgba(196,181,253,0.08); border:1px solid rgba(196,181,253,0.2);
+  border-radius:16px; padding:1rem 1.4rem; margin-bottom:1rem;
+  display:flex; align-items:center; justify-content:space-between; gap:1rem;
+}
+.safe-name-card .label { font-size:.8rem; color:var(--muted); }
+.safe-name-card .name { font-size:1.1rem; font-weight:700; color:var(--lavender); }
+.safe-name-card .pin-note { font-size:.75rem; color:rgba(255,255,255,.35); margin-top:.2rem; }
+
+/* CTA buttons */
+.cta-row { display:flex; gap:.8rem; flex-wrap:wrap; margin-bottom:1rem; }
+.cta-btn {
+  flex:1; min-width:140px; padding:.9rem; border-radius:14px; border:none;
+  font-size:.9rem; font-weight:600; cursor:pointer; transition:all .2s; text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:.4rem;
+}
+.cta-primary { background:linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff; }
+.cta-primary:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(124,58,237,0.4); }
+.cta-secondary { background:rgba(255,255,255,0.06); border:1px solid var(--border); color:var(--text); }
+.cta-secondary:hover { border-color:var(--lavender); }
+.cta-emergency { background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; }
+
+/* Error message */
+.err-box {
+  background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3);
+  border-radius:12px; padding:1rem 1.2rem; font-size:.88rem; color:#fca5a5;
+  margin-top:.8rem; display:none;
+}
+.err-box.show { display:block; }
+</style>
+</head>
+<body>
+
+<!-- Particle background -->
+<div class="particles" id="particleContainer"></div>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="logo">Safe<span>Voice</span></div>
+  <a class="back-btn" href="/survivor">← Back</a>
+</div>
+
+<div class="wrap">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="alias-badge" id="aliasBadge" style="display:none">
+      🌸 <span id="aliasDisplay"></span>
+    </div>
+    <h1>Tell us how you're <span>feeling</span></h1>
+    <p>Share what's on your mind — in your own words. Our AI listens without judgment and connects you to the right support.</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" id="tabText" onclick="switchTab('text')">✍️ Write</button>
+    <button class="tab" id="tabVoice" onclick="switchTab('voice')">🎤 Speak</button>
+  </div>
+
+  <!-- Text input -->
+  <div class="input-card" id="textSection">
+    <div class="input-label">What are you feeling right now?</div>
+    <textarea id="textInput" placeholder="Share what happened to you... how you feel... what you are going through... There is no wrong answer here. This is a safe space." maxlength="2000"></textarea>
+    <div class="char-count"><span id="charCount">0</span> / 2000</div>
+  </div>
+
+  <!-- Voice input -->
+  <div class="input-card" id="voiceSection" style="display:none;">
+    <div class="input-label">Speak freely — we are listening</div>
+    <div class="voice-section active">
+      <div class="rec-btn" id="recBtn" onclick="toggleRecording()">🎤</div>
+      <div class="rec-status" id="recStatus">Tap the mic to start speaking</div>
+      <div class="rec-timer" id="recTimer" style="display:none">0:00</div>
+      <div class="transcribed-box" id="transcribedBox"></div>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div class="err-box" id="errBox"></div>
+
+  <!-- Submit -->
+  <button class="submit-btn" id="submitBtn" onclick="submitAnalysis()">
+    <span class="btn-text">✨ Analyse My Feelings</span>
+    <div class="spinner"></div>
+  </button>
+  <p class="privacy">🔒 Anonymous · Not stored with your identity · Safe</p>
+
+  <!-- ═══ RESULT PANEL ═══ -->
+  <div id="resultPanel">
+
+    <!-- Safe name reminder -->
+    <div class="safe-name-card" id="safeNameCard" style="display:none">
+      <div>
+        <div class="label">Your Safe Name</div>
+        <div class="name" id="safeNameDisplay"></div>
+        <div class="pin-note">Remember your PIN to return to this session later</div>
+      </div>
+      <div style="font-size:2rem">🌸</div>
+    </div>
+
+    <!-- Risk banner -->
+    <div class="risk-banner" id="riskBanner">
+      <div class="risk-icon" id="riskIcon"></div>
+      <h2 id="riskTitle"></h2>
+      <div class="risk-label" id="riskLabel"></div>
+      <!-- Severity bar -->
+      <div class="severity-row" style="margin-top:1rem;">
+        <div class="severity-bar-bg">
+          <div class="severity-bar-fill" id="severityFill"></div>
+        </div>
+        <div class="severity-pct" id="severityPct"></div>
+      </div>
+    </div>
+
+    <!-- Emotion breakdown -->
+    <div class="emotions-card" id="emotionsCard">
+      <h3>Emotional Profile (AI Detection)</h3>
+      <div id="emotionBars"></div>
+    </div>
+
+    <!-- Action guidance -->
+    <div class="action-card" id="actionCard">
+      <h3>Recommended Support</h3>
+      <p id="actionText"></p>
+    </div>
+
+    <!-- CTA buttons -->
+    <div class="cta-row" id="ctaRow"></div>
+
+  </div><!-- /resultPanel -->
+
+</div><!-- /wrap -->
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────
+const alias      = sessionStorage.getItem('sv_alias') || '';
+const pin        = sessionStorage.getItem('sv_pin')   || '';
+let   currentTab = 'text';
+let   mediaRecorder, audioChunks = [], recInterval, recSeconds = 0;
+let   isRecording = false, transcribedText = '';
+
+// ── Alias badge ───────────────────────────────────────────────────────────
+if (alias) {
+  document.getElementById('aliasBadge').style.display  = 'inline-flex';
+  document.getElementById('aliasDisplay').textContent  = alias;
+}
+
+// Prefill alias from URL param too
+const urlAlias = new URLSearchParams(window.location.search).get('alias');
+if (urlAlias && !alias) {
+  document.getElementById('aliasBadge').style.display  = 'inline-flex';
+  document.getElementById('aliasDisplay').textContent  = urlAlias;
+}
+
+// ── Tab switch ────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('textSection').style.display  = tab==='text'  ? 'block' : 'none';
+  document.getElementById('voiceSection').style.display = tab==='voice' ? 'block' : 'none';
+  document.getElementById('tabText').classList.toggle('active',  tab==='text');
+  document.getElementById('tabVoice').classList.toggle('active', tab==='voice');
+  hideError();
+}
+
+// ── Char counter ──────────────────────────────────────────────────────────
+document.getElementById('textInput').addEventListener('input', function() {
+  document.getElementById('charCount').textContent = this.value.length;
+});
+
+// ── Error helpers ─────────────────────────────────────────────────────────
+function showError(msg) {
+  const b = document.getElementById('errBox');
+  b.textContent = msg; b.classList.add('show');
+  b.scrollIntoView({behavior:'smooth', block:'center'});
+}
+function hideError() {
+  document.getElementById('errBox').classList.remove('show');
+}
+
+// ── Voice recording ───────────────────────────────────────────────────────
+async function toggleRecording() {
+  if (!isRecording) await startRecording();
+  else               stopRecording();
+}
+
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+    audioChunks  = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    mediaRecorder.onstop = handleAudioStop;
+    mediaRecorder.start();
+    isRecording = true;
+    recSeconds  = 0;
+    document.getElementById('recBtn').classList.add('recording');
+    document.getElementById('recBtn').textContent = '⏹️';
+    document.getElementById('recStatus').textContent = 'Recording... tap to stop';
+    document.getElementById('recTimer').style.display = 'block';
+    recInterval = setInterval(() => {
+      recSeconds++;
+      const m = Math.floor(recSeconds/60), s = recSeconds%60;
+      document.getElementById('recTimer').textContent = `${m}:${s.toString().padStart(2,'0')}`;
+      if (recSeconds >= 120) stopRecording(); // auto-stop at 2 min
+    }, 1000);
+  } catch(e) {
+    showError('Microphone access denied. Please allow microphone access and try again.');
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && isRecording) {
+    mediaRecorder.stop();
+    mediaRecorder.stream.getTracks().forEach(t => t.stop());
+    isRecording = false;
+    clearInterval(recInterval);
+    document.getElementById('recBtn').classList.remove('recording');
+    document.getElementById('recBtn').textContent = '🎤';
+    document.getElementById('recStatus').textContent = 'Processing audio...';
+    document.getElementById('recTimer').style.display = 'none';
+  }
+}
+
+async function handleAudioStop() {
+  const blob = new Blob(audioChunks, { type:'audio/webm' });
+  const formData = new FormData();
+  formData.append('audio', blob, 'recording.webm');
+  formData.append('alias', alias || urlAlias || 'Anonymous');
+
+  setLoading(true);
+  try {
+    const res  = await fetch('/api/analyse-audio', { method:'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok) { showError(data.error || 'Audio analysis failed. Please try again.'); setLoading(false); return; }
+    // Show transcription
+    if (data.transcribed_text) {
+      const tb = document.getElementById('transcribedBox');
+      tb.textContent = '💬 Heard: "' + data.transcribed_text + '"';
+      tb.classList.add('show');
+      transcribedText = data.transcribed_text;
+    }
+    document.getElementById('recStatus').textContent = 'Analysis complete ✓';
+    displayResult(data);
+  } catch(e) {
+    showError('Could not connect to server. Please check your connection.');
+  }
+  setLoading(false);
+}
+
+// ── Text analysis ─────────────────────────────────────────────────────────
+async function submitAnalysis() {
+  hideError();
+
+  if (currentTab === 'voice') {
+    // Voice is handled by stopRecording/handleAudioStop
+    if (!transcribedText) { showError('Please record your voice first.'); return; }
+    return;
+  }
+
+  const text = document.getElementById('textInput').value.trim();
+  if (!text) { showError('Please share what you are feeling. Even a few sentences help.'); return; }
+  if (text.length < 20) { showError('Please share a little more — at least a sentence so we can understand how you feel.'); return; }
+
+  setLoading(true);
+  try {
+    const res = await fetch('/api/analyse', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        text:  text,
+        alias: alias || urlAlias || 'Anonymous'
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showError(data.error || 'Something went wrong. Please try again.');
+      setLoading(false);
+      return;
+    }
+    displayResult(data);
+  } catch(e) {
+    showError('Could not connect to the server. Please check your internet connection and try again.');
+  }
+  setLoading(false);
+}
+
+function setLoading(v) {
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = v;
+  btn.classList.toggle('loading', v);
+}
+
+// ── Display result ────────────────────────────────────────────────────────
+const EMOTION_COLORS = {
+  fear:'#ef4444', sadness:'#6366f1', anger:'#f97316',
+  joy:'#10b981', neutral:'#6b7280', disgust:'#8b5cf6', surprise:'#f59e0b'
+};
+
+function displayResult(data) {
+  const panel = document.getElementById('resultPanel');
+  const risk  = data.risk_level || 'Low';
+
+  // Safe name card
+  if (alias) {
+    document.getElementById('safeNameCard').style.display = 'flex';
+    document.getElementById('safeNameDisplay').textContent = alias;
+  }
+
+  // Risk banner
+  const banner = document.getElementById('riskBanner');
+  banner.className = `risk-banner ${risk}`;
+  document.getElementById('riskIcon').textContent  = data.escalation_icon || (risk==='High'?'🆘':risk==='Moderate'?'💛':'🌱');
+  document.getElementById('riskTitle').textContent = data.escalation_title || risk + ' Risk';
+  document.getElementById('riskLabel').textContent = `Risk Level: ${risk}`;
+
+  // Severity bar
+  const pct = Math.round((data.severity_score || 0) * 100);
+  const fillColor = risk==='High'?'#ef4444':risk==='Moderate'?'#f59e0b':'#10b981';
+  document.getElementById('severityFill').style.width      = pct + '%';
+  document.getElementById('severityFill').style.background = fillColor;
+  document.getElementById('severityPct').textContent       = pct + '%';
+
+  // Emotion bars
+  const scores  = data.emotion_scores || {};
+  const sorted  = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+  const barsEl  = document.getElementById('emotionBars');
+  barsEl.innerHTML = '';
+  sorted.forEach(([emotion, score]) => {
+    const pct = Math.round(score * 100);
+    const row = document.createElement('div');
+    row.className = 'emotion-row';
+    row.innerHTML = `
+      <div class="emotion-label">${emotion}</div>
+      <div class="emotion-bar-bg">
+        <div class="emotion-bar-fill" data-w="${pct}" style="background:${EMOTION_COLORS[emotion]||'#7c3aed'}"></div>
+      </div>
+      <div class="emotion-pct">${pct}%</div>`;
+    barsEl.appendChild(row);
+  });
+  // Animate bars after paint
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.emotion-bar-fill').forEach(el => {
+      el.style.width = el.getAttribute('data-w') + '%';
+    });
+  });
+
+  // Action text
+  document.getElementById('actionText').textContent = data.recommended_action || '';
+
+  // CTA buttons
+  const ctaRow = document.getElementById('ctaRow');
+  ctaRow.innerHTML = '';
+
+  if (risk === 'High') {
+    // High risk — emergency form first, then payment
+    if (data.emergency_url) {
+      addCTA(ctaRow, '🆘 Get Emergency Help', data.emergency_url, 'cta-emergency');
+    }
+    addCTA(ctaRow, '💬 Talk to a Therapist', data.payment_url || '#', 'cta-primary');
+    addCTA(ctaRow, '📞 Emergency Helplines', '/helplines', 'cta-secondary');
+  } else if (risk === 'Moderate' && data.chat_enabled) {
+    addCTA(ctaRow, '💜 Connect to Therapist', data.payment_url || '#', 'cta-primary');
+    addCTA(ctaRow, '📞 Helplines', '/helplines', 'cta-secondary');
+  } else {
+    addCTA(ctaRow, '🌱 Self-Help Resources', '/helplines', 'cta-secondary');
+    addCTA(ctaRow, '💬 Talk to Someone', data.payment_url || '#', 'cta-primary');
+  }
+
+  // Show panel + scroll
+  panel.classList.add('show');
+  setTimeout(() => panel.scrollIntoView({ behavior:'smooth', block:'start' }), 100);
+
+  // Auto-redirect High risk to emergency form
+  if (risk === 'High' && data.emergency_url) {
+    setTimeout(() => { window.location.href = data.emergency_url; }, 3500);
+  }
+}
+
+function addCTA(container, text, href, cls) {
+  const a = document.createElement('a');
+  a.href = href; a.className = `cta-btn ${cls}`; a.textContent = text;
+  container.appendChild(a);
+}
+
+// ── Particles ─────────────────────────────────────────────────────────────
+const COLORS = ['rgba(196,181,253,0.5)','rgba(253,164,175,0.4)','rgba(110,231,183,0.4)','rgba(147,197,253,0.4)'];
+const container = document.getElementById('particleContainer');
+for (let i = 0; i < 25; i++) {
+  const p  = document.createElement('div');
+  const sz = 3 + Math.random() * 8;
+  p.className   = 'p';
+  p.style.cssText = `
+    width:${sz}px; height:${sz}px;
+    left:${Math.random()*100}%;
+    background:${COLORS[Math.floor(Math.random()*COLORS.length)]};
+    animation-duration:${12+Math.random()*18}s;
+    animation-delay:-${Math.random()*20}s;
+  `;
+  container.appendChild(p);
+}
+
+// ── Set emergency_url in api response ─────────────────────────────────────
+// Note: this is added server-side in app.py api_analyse return:
+//   "emergency_url": f"/survivor/emergency/{sess.session_uuid}" if result["risk_level"] == "High" else None
+</script>
+</body>
+</html>

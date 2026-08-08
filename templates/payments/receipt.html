@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block title %}Payment Receipt — SafeVoice{% endblock %}
+{% block extra_css %}
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;700&display=swap');
+
+  body { background: linear-gradient(135deg, #f0faf4 0%, #fafaf8 60%, #f0f4ff 100%); }
+
+  .receipt-wrap {
+    min-height: calc(100vh - 64px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 2rem;
+  }
+
+  .receipt-card {
+    background: #fff; border-radius: 28px; padding: 3.5rem 3rem;
+    max-width: 560px; width: 100%;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.1);
+    animation: popIn 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
+  }
+  @keyframes popIn {
+    from { opacity:0; transform:scale(0.85) translateY(30px); }
+    to   { opacity:1; transform:scale(1) translateY(0); }
+  }
+
+  /* ── Header ── */
+  .receipt-header {
+    display: flex; align-items: center; gap: 1rem;
+    margin-bottom: 2rem; padding-bottom: 1.5rem;
+    border-bottom: 2px dashed #e5e7eb;
+  }
+  .receipt-icon {
+    width: 64px; height: 64px; border-radius: 16px;
+    background: linear-gradient(135deg, #10b981, #34d399);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.8rem;
+    box-shadow: 0 8px 20px rgba(16,185,129,0.3);
+    flex-shrink: 0;
+  }
+  .receipt-title-group h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.7rem; font-weight: 500;
+    color: #0f1923; margin: 0 0 0.2rem;
+  }
+  .receipt-title-group p {
+    color: #6b7280; font-size: 0.85rem; margin: 0;
+  }
+
+  /* ── Status badge ── */
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background: #ecfdf5; color: #065f46;
+    border: 1px solid #a7f3d0;
+    border-radius: 999px; padding: 0.3rem 0.9rem;
+    font-size: 0.78rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 1.5rem;
+  }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #10b981; }
+
+  /* ── Info boxes ── */
+  .info-box {
+    background: #f8fffe; border: 1px solid #a7f3d0; border-radius: 14px;
+    padding: 1.3rem 1.5rem; margin-bottom: 1.2rem;
+  }
+  .info-box-title {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em;
+    color: #9ca3af; font-weight: 700; margin-bottom: 0.8rem;
+  }
+  .info-row {
+    display: flex; justify-content: space-between;
+    align-items: center; padding: 0.45rem 0;
+    font-size: 0.88rem;
+  }
+  .info-row:not(:last-child) { border-bottom: 1px solid #e5e7eb; }
+  .info-row span:first-child { color: #6b7280; }
+  .info-row span:last-child  { font-weight: 700; color: #0f1923; }
+
+  /* ── Amount highlight ── */
+  .amount-box {
+    background: #0f1923; border-radius: 14px;
+    padding: 1.3rem 1.5rem; margin-bottom: 1.2rem;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .amount-box .label { color: rgba(255,255,255,0.5); font-size: 0.82rem; }
+  .amount-box .amount {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem; font-weight: 700; color: #34d399;
+  }
+
+  /* ── Session ID box ── */
+  .session-id-box {
+    background: #0f1923; color: #fff; border-radius: 12px;
+    padding: 1rem 1.3rem; font-size: 0.82rem; margin-bottom: 1.5rem;
+  }
+  .session-id-box .label {
+    color: rgba(255,255,255,0.5); font-size: 0.72rem;
+    text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.3rem;
+  }
+  .session-id-box .id {
+    font-family: monospace; font-size: 0.85rem;
+    word-break: break-all; color: #a7f3d0;
+  }
+
+  /* ── Divider ── */
+  .dashed-divider {
+    border: none; border-top: 2px dashed #e5e7eb; margin: 1.5rem 0;
+  }
+
+  /* ── Buttons ── */
+  .action-btns { display: flex; flex-direction: column; gap: 0.8rem; }
+  .btn-green {
+    background: #10b981; color: #fff; padding: 1rem; border-radius: 12px;
+    border: none; font-family: 'DM Sans', sans-serif; font-size: 1rem;
+    font-weight: 700; cursor: pointer; text-decoration: none;
+    display: block; text-align: center; transition: all 0.2s;
+  }
+  .btn-green:hover { background: #059669; transform: translateY(-2px); }
+  .btn-outline-dark {
+    background: transparent; color: #0f1923; padding: 0.85rem; border-radius: 12px;
+    border: 2px solid #e5e7eb; font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    text-decoration: none; display: block; text-align: center; transition: all 0.2s;
+  }
+  .btn-outline-dark:hover { border-color: #0f1923; }
+
+  /* ── Print styles ── */
+  @media print {
+    body { background: #fff !important; }
+    .action-btns { display: none !important; }
+    .receipt-card { box-shadow: none; padding: 1rem; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="receipt-wrap">
+  <div class="receipt-card">
+
+    <!-- Header -->
+    <div class="receipt-header">
+      <div class="receipt-icon">🧾</div>
+      <div class="receipt-title-group">
+        <h1>Payment Receipt</h1>
+        <p>SafeVoice — Confidential Therapy Platform</p>
+      </div>
+    </div>
+
+    <!-- Status -->
+    <div class="status-badge">
+      <span class="status-dot"></span>
+      {{ payment.status | capitalize }}
+    </div>
+
+    <!-- Amount -->
+    <div class="amount-box">
+      <div class="label">Total Amount Paid</div>
+      <div class="amount">₹{{ (payment.amount_paise // 100) | int }}</div>
+    </div>
+
+    <!-- Payment Details -->
+    <div class="info-box">
+      <div class="info-box-title">Payment Details</div>
+
+      <div class="info-row">
+        <span>Receipt No.</span>
+        <span style="font-family:monospace; font-size:0.78rem">{{ payment.payment_ref }}</span>
+      </div>
+      <div class="info-row">
+        <span>Razorpay Payment ID</span>
+        <span style="font-size:0.78rem">{{ payment.razorpay_payment_id or '—' }}</span>
+      </div>
+      <div class="info-row">
+        <span>Razorpay Order ID</span>
+        <span style="font-size:0.78rem">{{ payment.razorpay_order_id or '—' }}</span>
+      </div>
+      <div class="info-row">
+        <span>Date & Time</span>
+        <span>{{ payment.paid_at.strftime('%d %b %Y, %H:%M') if payment.paid_at else '—' }}</span>
+      </div>
+      <div class="info-row">
+        <span>Currency</span>
+        <span>{{ payment.currency or 'INR' }}</span>
+      </div>
+    </div>
+
+    <!-- Plan Details -->
+    <div class="info-box">
+      <div class="info-box-title">Plan Details</div>
+
+      <div class="info-row">
+        <span>Plan Name</span>
+        <span>{{ plan.name if plan else '—' }}</span>
+      </div>
+      <div class="info-row">
+        <span>Sessions Included</span>
+        <span>{{ plan.sessions if plan else '—' }}</span>
+      </div>
+      <div class="info-row">
+        <span>Validity</span>
+        <span>{{ plan.validity_days if plan else '—' }} day(s)</span>
+      </div>
+      <div class="info-row">
+        <span>Plan Type</span>
+        <span>{{ (plan.plan_type | replace('_', ' ') | title) if plan else '—' }}</span>
+      </div>
+    </div>
+
+    <!-- Therapist Details -->
+    <div class="info-box">
+      <div class="info-box-title">Assigned Therapist</div>
+
+      <div class="info-row">
+        <span>Name</span>
+        <span>
+          {% if therapist %}
+            {{ therapist.full_name or therapist.username }}
+          {% else %}
+            Being assigned…
+          {% endif %}
+        </span>
+      </div>
+      {% if therapist and therapist.specialization %}
+      <div class="info-row">
+        <span>Specialization</span>
+        <span>{{ therapist.specialization }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Session ID -->
+    <div class="session-id-box">
+      <div class="label">Your Anonymous Session ID — Save This</div>
+      <div class="id">{{ session.session_uuid if session else '—' }}</div>
+    </div>
+
+    <hr class="dashed-divider">
+
+    <!-- Actions -->
+    <div class="action-btns">
+      {% if session %}
+      <a href="/survivor/chat/{{ session.session_uuid }}" class="btn-green">
+        💬 Go to Your Session →
+      </a>
+      {% endif %}
+      <button onclick="window.print()" class="btn-outline-dark">
+        🖨️ Print / Save as PDF
+      </button>
+      <a href="/survivor" class="btn-outline-dark">← Back to Portal</a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

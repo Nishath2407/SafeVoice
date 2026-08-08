@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}My Availability — SafeVoice{% endblock %}
+{% block extra_css %}
+<style>
+.slots-wrap { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+.page-title { font-family:'Cormorant Garamond',serif; font-size:2rem; font-weight:400; margin-bottom:0.4rem; }
+.page-sub { color:var(--slate); font-size:0.9rem; margin-bottom:2rem; }
+
+.add-slot-card {
+  background:#fff; border-radius:16px; padding:1.5rem;
+  border:2px solid #e5e7eb; margin-bottom:2rem;
+  box-shadow:0 2px 12px rgba(0,0,0,0.04);
+}
+.add-slot-card h3 { font-size:1rem; font-weight:700; margin-bottom:1rem; }
+.slot-form { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:0.8rem; align-items:end; }
+@media(max-width:640px) { .slot-form { grid-template-columns:1fr 1fr; } }
+.form-group label { font-size:0.75rem; font-weight:700; color:var(--slate); text-transform:uppercase; letter-spacing:0.06em; display:block; margin-bottom:0.35rem; }
+.form-group input, .form-group select {
+  width:100%; padding:0.7rem 0.9rem; border-radius:10px; border:2px solid #e5e7eb;
+  font-family:'DM Sans',sans-serif; font-size:0.9rem; transition:border 0.2s;
+}
+.form-group input:focus, .form-group select:focus { outline:none; border-color:var(--ink); }
+.btn-add { padding:0.75rem 1.5rem; background:var(--ink); color:#fff; border:none; border-radius:10px; font-family:'DM Sans',sans-serif; font-size:0.9rem; font-weight:700; cursor:pointer; white-space:nowrap; }
+.btn-add:hover { background:#2d2d4e; }
+
+.slots-section h3 { font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--slate); margin-bottom:1rem; }
+.slots-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:0.8rem; }
+.slot-chip {
+  background:#fff; border-radius:12px; padding:1rem 1.1rem;
+  border:1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between;
+  transition:all 0.2s;
+}
+.slot-chip:hover { border-color:var(--blush); }
+.slot-chip.booked { background:#f0fdf4; border-color:#86efac; }
+.slot-info { flex:1; }
+.slot-date { font-weight:700; font-size:0.88rem; color:var(--ink); }
+.slot-time { font-size:0.8rem; color:var(--slate); margin-top:0.1rem; }
+.slot-dur  { font-size:0.72rem; color:#9ca3af; }
+.slot-status { font-size:0.72rem; font-weight:700; padding:0.2rem 0.6rem; border-radius:20px; margin-left:0.5rem; }
+.slot-status.free   { background:#dbeafe; color:#1d4ed8; }
+.slot-status.booked { background:#d1fae5; color:#065f46; }
+.btn-del { width:28px;height:28px;border-radius:50%;background:#fee2e2;border:none;color:#ef4444;cursor:pointer;font-size:0.85rem;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+.btn-del:hover { background:#fecaca; }
+.empty-slots { text-align:center; padding:3rem 2rem; color:var(--slate); background:#fff; border-radius:16px; border:2px dashed #e5e7eb; }
+.back-link { display:inline-flex; align-items:center; gap:0.4rem; color:var(--slate); font-size:0.85rem; font-weight:600; text-decoration:none; margin-bottom:1.5rem; }
+.back-link:hover { color:var(--ink); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="slots-wrap">
+  <a href="/therapist" class="back-link">← Back to Dashboard</a>
+  <h1 class="page-title">My Availability</h1>
+  <p class="page-sub">Set the times you are available for sessions. Survivors will see these slots when booking and can pick a time that works for both of you.</p>
+
+  <!-- ADD SLOT FORM -->
+  <div class="add-slot-card">
+    <h3>➕ Add Available Slot</h3>
+    <div class="slot-form">
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="slot-date" min="{{ today }}"/>
+      </div>
+      <div class="form-group">
+        <label>Time</label>
+        <input type="time" id="slot-time"/>
+      </div>
+      <div class="form-group">
+        <label>Duration</label>
+        <select id="slot-dur">
+          <option value="30">30 min</option>
+          <option value="45" selected>45 min</option>
+          <option value="60">60 min</option>
+          <option value="90">90 min</option>
+        </select>
+      </div>
+      <button class="btn-add" onclick="addSlot()">Add Slot</button>
+    </div>
+    <div id="add-error" style="color:#ef4444;font-size:0.82rem;margin-top:0.6rem;display:none"></div>
+  </div>
+
+  <!-- SLOTS LIST -->
+  <div class="slots-section">
+    <h3>Your upcoming slots ({{ slots|length }})</h3>
+    {% if slots %}
+    <div class="slots-grid" id="slots-grid">
+      {% for slot in slots %}
+      <div class="slot-chip {% if slot.is_booked %}booked{% endif %}" id="slot-{{ slot.id }}">
+        <div class="slot-info">
+          <div class="slot-date">{{ slot.slot_date.strftime('%a, %d %b %Y') }}</div>
+          <div class="slot-time">🕐 {{ slot.slot_time }}</div>
+          <div class="slot-dur">{{ slot.duration_min }} min session</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.4rem">
+          <span class="slot-status {% if slot.is_booked %}booked{% else %}free{% endif %}">
+            {% if slot.is_booked %}Booked{% else %}Open{% endif %}
+          </span>
+          {% if not slot.is_booked %}
+          <button class="btn-del" onclick="deleteSlot({{ slot.id }})" title="Delete">✕</button>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-slots">
+      <div style="font-size:2.5rem;margin-bottom:0.8rem">📅</div>
+      <p style="font-weight:600">No slots added yet</p>
+      <p style="font-size:0.85rem;margin-top:0.3rem">Add your first available time above so survivors can book you.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function addSlot() {
+  const date = document.getElementById('slot-date').value;
+  const time = document.getElementById('slot-time').value;
+  const dur  = document.getElementById('slot-dur').value;
+  const err  = document.getElementById('add-error');
+  err.style.display = 'none';
+
+  if (!date) { err.textContent = 'Please select a date.'; err.style.display='block'; return; }
+  if (!time) { err.textContent = 'Please select a time.'; err.style.display='block'; return; }
+
+  const res  = await fetch('/api/therapist/slots/add', {
+    method:  'POST',
+    headers: {'Content-Type':'application/json'},
+    body:    JSON.stringify({ slot_date: date, slot_time: time, duration_min: parseInt(dur) }),
+  });
+  const data = await res.json();
+
+  if (data.error) { err.textContent = data.error; err.style.display='block'; return; }
+
+  // Add chip to grid without reload
+  const grid = document.getElementById('slots-grid') || createGrid();
+  const d    = new Date(date + 'T' + time);
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const label = days[d.getDay()] + ', ' + String(d.getDate()).padStart(2,'0') + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+
+  const chip = document.createElement('div');
+  chip.className = 'slot-chip';
+  chip.id = 'slot-' + data.slot_id;
+  chip.innerHTML = `
+    <div class="slot-info">
+      <div class="slot-date">${label}</div>
+      <div class="slot-time">🕐 ${time}</div>
+      <div class="slot-dur">${dur} min session</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.4rem">
+      <span class="slot-status free">Open</span>
+      <button class="btn-del" onclick="deleteSlot(${data.slot_id})" title="Delete">✕</button>
+    </div>`;
+  grid.prepend(chip);
+
+  // Clear inputs
+  document.getElementById('slot-date').value = '';
+  document.getElementById('slot-time').value = '';
+}
+
+function createGrid() {
+  const section = document.querySelector('.slots-section');
+  section.querySelector('.empty-slots')?.remove();
+  const grid = document.createElement('div');
+  grid.className = 'slots-grid';
+  grid.id = 'slots-grid';
+  section.appendChild(grid);
+  return grid;
+}
+
+async function deleteSlot(id) {
+  if (!confirm('Delete this slot?')) return;
+  const res = await fetch('/api/therapist/slots/delete/' + id, { method:'POST' });
+  const data = await res.json();
+  if (data.success) document.getElementById('slot-' + id)?.remove();
+  else alert(data.error || 'Could not delete slot.');
+}
+</script>
+{% endblock %}

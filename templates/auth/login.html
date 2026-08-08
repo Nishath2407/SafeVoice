@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SafeVoice — Staff Login</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  min-height:100vh; font-family:'Segoe UI',system-ui,sans-serif;
+  background:linear-gradient(135deg,#0f0a1e 0%,#1e0545 60%,#0a1628 100%);
+  color:#fff; display:flex; flex-direction:column;
+}
+
+/* ─ Particles ─ */
+.particles { position:fixed; inset:0; overflow:hidden; pointer-events:none; z-index:0; }
+.p { position:absolute; border-radius:50%; animation:rise linear infinite; opacity:0.12; }
+@keyframes rise {
+  from { transform:translateY(100vh); opacity:0; }
+  10%  { opacity:0.12; }
+  90%  { opacity:0.12; }
+  to   { transform:translateY(-100px); opacity:0; }
+}
+
+/* ─ Page layout ─ */
+.page {
+  position:relative; z-index:1; display:flex; min-height:100vh;
+}
+
+/* ─ Left panel ─ */
+.left {
+  flex:1; display:flex; flex-direction:column; justify-content:center;
+  padding:3rem; background:rgba(255,255,255,0.02);
+  border-right:1px solid rgba(255,255,255,0.08);
+  display:none;
+}
+@media(min-width:860px){ .left{ display:flex; } }
+.logo { font-size:2rem; font-weight:800; color:#c4b5fd; letter-spacing:1px; margin-bottom:2.5rem; }
+.logo span { color:#fda4af; }
+.portals { display:flex; flex-direction:column; gap:1rem; }
+.portal-card {
+  background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);
+  border-radius:16px; padding:1rem 1.2rem; display:flex; align-items:center; gap:1rem;
+}
+.portal-icon { font-size:1.8rem; }
+.portal-info h4 { font-size:.95rem; font-weight:600; color:#c4b5fd; margin-bottom:.2rem; }
+.portal-info p  { font-size:.78rem; color:rgba(255,255,255,.5); line-height:1.4; }
+.survivor-note {
+  margin-top:2rem; background:rgba(110,231,183,0.07); border:1px solid rgba(110,231,183,0.2);
+  border-radius:14px; padding:1rem 1.2rem;
+}
+.survivor-note p { font-size:.82rem; color:rgba(255,255,255,.65); line-height:1.6; }
+.survivor-note a { color:#6ee7b7; font-weight:600; text-decoration:none; }
+
+/* ─ Right panel (form) ─ */
+.right {
+  flex:0 0 420px; display:flex; align-items:center; justify-content:center;
+  padding:2rem 1.5rem;
+}
+@media(max-width:860px){ .right{ flex:1; } }
+
+.form-box {
+  background:rgba(255,255,255,0.07); backdrop-filter:blur(14px);
+  border:1px solid rgba(255,255,255,0.12); border-radius:24px;
+  padding:2.2rem; width:100%; max-width:380px;
+}
+.form-box .mobile-logo {
+  font-size:1.5rem; font-weight:800; color:#c4b5fd; text-align:center;
+  margin-bottom:1.5rem; display:block;
+}
+@media(min-width:860px){ .form-box .mobile-logo{ display:none; } }
+
+.form-box h2 { font-size:1.4rem; font-weight:800; margin-bottom:.3rem; text-align:center; }
+.form-box .sub { font-size:.85rem; color:rgba(255,255,255,.5); text-align:center; margin-bottom:1.5rem; }
+
+/* Flash messages */
+.flash { border-radius:12px; padding:.75rem 1rem; margin-bottom:1rem; font-size:.85rem; line-height:1.4; }
+.flash.danger  { background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.3); color:#fca5a5; }
+.flash.success { background:rgba(16,185,129,.12); border:1px solid rgba(16,185,129,.3); color:#6ee7b7; }
+.flash.warning { background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.3); color:#fcd34d; }
+.flash.info    { background:rgba(59,130,246,.12); border:1px solid rgba(59,130,246,.3); color:#93c5fd; }
+
+/* Role selector */
+.role-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:.5rem; margin-bottom:1.2rem; }
+.role-chip {
+  padding:.5rem; border-radius:10px; border:1.5px solid rgba(255,255,255,.12);
+  background:transparent; color:rgba(255,255,255,.6); cursor:pointer; text-align:center;
+  font-size:.75rem; transition:all .2s;
+}
+.role-chip:hover { border-color:rgba(196,181,253,.4); color:#c4b5fd; }
+.role-chip.active { background:rgba(124,58,237,.25); border-color:#c4b5fd; color:#c4b5fd; font-weight:600; }
+.role-icon { font-size:1.2rem; display:block; margin-bottom:.25rem; }
+
+/* Form fields */
+.field { margin-bottom:1rem; }
+.field label { display:block; font-size:.8rem; color:rgba(255,255,255,.55); margin-bottom:.4rem; letter-spacing:.5px; }
+.field input {
+  width:100%; padding:.8rem 1rem; border-radius:12px;
+  border:1.5px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06);
+  color:#fff; font-size:.95rem; outline:none; transition:border .2s;
+}
+.field input::placeholder { color:rgba(255,255,255,.28); }
+.field input:focus { border-color:#c4b5fd; background:rgba(255,255,255,.09); }
+
+/* Password field with toggle */
+.pw-wrap { position:relative; }
+.pw-wrap input { padding-right:3rem; }
+.pw-toggle {
+  position:absolute; right:.8rem; top:50%; transform:translateY(-50%);
+  background:none; border:none; color:rgba(255,255,255,.4); cursor:pointer; font-size:1rem;
+  transition:color .2s;
+}
+.pw-toggle:hover { color:rgba(255,255,255,.7); }
+
+/* Forgot link */
+.forgot { text-align:right; margin-top:-.5rem; margin-bottom:1rem; }
+.forgot a { font-size:.78rem; color:rgba(196,181,253,.7); text-decoration:none; transition:color .2s; }
+.forgot a:hover { color:#c4b5fd; }
+
+/* Submit */
+.submit-btn {
+  width:100%; padding:.9rem; border-radius:14px; border:none;
+  background:linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff;
+  font-size:1rem; font-weight:700; cursor:pointer; transition:all .2s;
+  display:flex; align-items:center; justify-content:center; gap:.5rem;
+}
+.submit-btn:hover { opacity:.9; transform:translateY(-2px); box-shadow:0 8px 24px rgba(124,58,237,.4); }
+.submit-btn:active { transform:translateY(0); }
+
+/* Divider */
+.divider { display:flex; align-items:center; gap:.8rem; margin:1.2rem 0; }
+.divider hr { flex:1; border:none; border-top:1px solid rgba(255,255,255,.1); }
+.divider span { font-size:.75rem; color:rgba(255,255,255,.35); }
+
+/* Bottom links */
+.bottom-links { text-align:center; font-size:.82rem; color:rgba(255,255,255,.45); }
+.bottom-links a { color:#c4b5fd; text-decoration:none; font-weight:500; }
+.bottom-links a:hover { color:#e0d7ff; }
+
+/* Survivor CTA (mobile) */
+.survivor-cta-mobile {
+  background:rgba(110,231,183,.07); border:1px solid rgba(110,231,183,.2);
+  border-radius:14px; padding:.9rem; text-align:center; margin-top:1.2rem;
+}
+.survivor-cta-mobile p { font-size:.8rem; color:rgba(255,255,255,.6); }
+.survivor-cta-mobile a { color:#6ee7b7; font-weight:600; text-decoration:none; }
+</style>
+</head>
+<body>
+
+<!-- Particles -->
+<div class="particles" id="pc"></div>
+
+<div class="page">
+
+  <!-- LEFT: info panel -->
+  <div class="left">
+    <div class="logo">Safe<span>Voice</span></div>
+
+    <div class="portals">
+      <div class="portal-card">
+        <div class="portal-icon">💚</div>
+        <div class="portal-info">
+          <h4>Therapist Portal</h4>
+          <p>View session queue, accept cases, chat with survivors, and share your emotion insights.</p>
+        </div>
+      </div>
+      <div class="portal-card">
+        <div class="portal-icon">🆘</div>
+        <div class="portal-info">
+          <h4>Emergency Responder</h4>
+          <p>Monitor high-risk escalations in real-time and coordinate emergency support.</p>
+        </div>
+      </div>
+      <div class="portal-card">
+        <div class="portal-icon">⚙️</div>
+        <div class="portal-info">
+          <h4>Admin Dashboard</h4>
+          <p>Approve therapists, manage users, view audit logs, and platform analytics.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="survivor-note">
+      <p>🌸 <strong>Are you a survivor seeking help?</strong><br/>
+        You do not need an account. Go directly to the 
+        <a href="/survivor">Survivor Portal →</a> — completely anonymous.
+      </p>
+    </div>
+  </div>
+
+  <!-- RIGHT: login form -->
+  <div class="right">
+    <div class="form-box">
+
+      <span class="mobile-logo">Safe<span style="color:#fda4af">Voice</span></span>
+
+      <h2>Staff Login</h2>
+      <p class="sub">Therapists, Emergency Responders & Admins</p>
+
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+          <div class="flash {{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      {% endwith %}
+
+      <!-- Role selector (visual only — backend uses role in DB) -->
+      <div class="role-grid">
+        <div class="role-chip active" onclick="selectRole(this,'therapist')">
+          <span class="role-icon">💚</span>Therapist
+        </div>
+        <div class="role-chip" onclick="selectRole(this,'emergency')">
+          <span class="role-icon">🆘</span>Responder
+        </div>
+        <div class="role-chip" onclick="selectRole(this,'admin')">
+          <span class="role-icon">⚙️</span>Admin
+        </div>
+      </div>
+
+      <form method="POST" action="/login">
+        <div class="field">
+          <label>EMAIL ADDRESS</label>
+          <input type="email" name="email" placeholder="your@email.com"
+                 required autocomplete="email" id="emailInput"/>
+        </div>
+
+        <div class="field">
+          <label>PASSWORD</label>
+          <div class="pw-wrap">
+            <input type="password" name="password" id="pwInput"
+                   placeholder="Your password" required autocomplete="current-password"/>
+            <button type="button" class="pw-toggle" onclick="togglePw()" id="pwToggle">👁️</button>
+          </div>
+        </div>
+
+        <div class="forgot">
+          <a href="/forgot-password">Forgot password?</a>
+        </div>
+
+        <button type="submit" class="submit-btn">
+          🔐 Sign In
+        </button>
+      </form>
+
+      <div class="divider"><hr/><span>New to SafeVoice?</span><hr/></div>
+
+      <div class="bottom-links">
+        <a href="/register">Register as Therapist or Responder →</a>
+      </div>
+
+      <!-- Survivor shortcut (shown on mobile too) -->
+      <div class="survivor-cta-mobile">
+        <p>🌸 Are you a survivor?<br/>
+          <a href="/survivor">Go to Survivor Portal →</a> — no login needed
+        </p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Role selector (visual only) ───────────────────────────────────────────
+function selectRole(chip, role) {
+  document.querySelectorAll('.role-chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  // Auto-fill placeholder hints
+  const hints = {
+    therapist: 'therapist@example.com',
+    emergency: 'responder@example.com',
+    admin:     'admin@safevoice.org',
+  };
+  document.getElementById('emailInput').placeholder = hints[role] || 'your@email.com';
+}
+
+// ── Password toggle ───────────────────────────────────────────────────────
+function togglePw() {
+  const inp = document.getElementById('pwInput');
+  const btn = document.getElementById('pwToggle');
+  if (inp.type === 'password') { inp.type = 'text';     btn.textContent = '🙈'; }
+  else                         { inp.type = 'password'; btn.textContent = '👁️'; }
+}
+
+// ── Particles ─────────────────────────────────────────────────────────────
+const COLORS = ['rgba(196,181,253,0.6)','rgba(253,164,175,0.5)','rgba(110,231,183,0.5)'];
+const pc = document.getElementById('pc');
+for (let i = 0; i < 20; i++) {
+  const d = document.createElement('div');
+  const s = 3 + Math.random() * 7;
+  d.className = 'p';
+  d.style.cssText = `
+    width:${s}px;height:${s}px;
+    left:${Math.random()*100}%;
+    background:${COLORS[i%3]};
+    animation-duration:${14+Math.random()*16}s;
+    animation-delay:-${Math.random()*25}s;
+  `;
+  pc.appendChild(d);
+}
+</script>
+</body>
+</html>

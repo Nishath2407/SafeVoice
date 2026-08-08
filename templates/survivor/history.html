@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+{% block title %}Your Session History — SafeVoice{% endblock %}
+{% block extra_css %}
+<style>
+.hist-wrap { max-width: 820px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+
+/* ── HEADER ── */
+.hist-header {
+  background: linear-gradient(135deg, var(--ink), #2d2d4e);
+  border-radius: 20px; padding: 2rem; margin-bottom: 2rem;
+  color: #fff; display: flex; align-items: flex-start; gap: 1.2rem; flex-wrap: wrap;
+}
+.hist-icon { font-size: 2.5rem; flex-shrink: 0; }
+.hist-header h1 { font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; font-weight: 300; margin-bottom: 0.3rem; }
+.hist-header p { font-size: 0.88rem; color: rgba(255,255,255,0.6); }
+.hist-uuid { font-family: monospace; font-size: 0.75rem; color: rgba(167,243,208,0.9); margin-top: 0.5rem; word-break: break-all; }
+
+/* ── STATS ROW ── */
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+.stat-box {
+  background: #fff; border-radius: 14px; padding: 1.2rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06); text-align: center;
+  border-top: 3px solid transparent;
+}
+.stat-box.green  { border-color: #10b981; }
+.stat-box.amber  { border-color: #f59e0b; }
+.stat-box.blue   { border-color: #3b82f6; }
+.stat-box.purple { border-color: #8b5cf6; }
+.stat-box .num   { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 600; }
+.stat-box .lbl   { font-size: 0.75rem; color: var(--slate); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.2rem; }
+
+/* ── SECTIONS ── */
+.section { background: #fff; border-radius: 16px; padding: 1.5rem; box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 1.5rem; }
+.section-head { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1.2rem; }
+.section-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+.si-blue { background: #dbeafe; } .si-green { background: #d1fae5; }
+.si-purple { background: #ede9fe; } .si-gold { background: #fef3c7; }
+.section-head h3 { font-size: 1rem; font-weight: 700; color: var(--ink); }
+.section-head p  { font-size: 0.78rem; color: var(--slate); margin-top: 0.1rem; }
+
+/* ── RISK BAND ── */
+.risk-band { border-radius: 10px; padding: 0.9rem 1.2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+.risk-band.low      { background: #d1fae5; }
+.risk-band.moderate { background: #fef3c7; }
+.risk-band.high     { background: #fee2e2; }
+.risk-title { font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; font-weight: 500; }
+.risk-pill  { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; padding: 0.25rem 0.7rem; border-radius: 20px; }
+.risk-pill.low      { background: #10b981; color: #fff; }
+.risk-pill.moderate { background: #f59e0b; color: #fff; }
+.risk-pill.high     { background: #ef4444; color: #fff; }
+
+/* ── SEV BAR ── */
+.sev-wrap { margin-bottom: 1rem; }
+.sev-label { display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 700; color: var(--slate); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.35rem; }
+.sev-track { background: #f1f5f9; border-radius: 20px; height: 8px; overflow: hidden; }
+.sev-fill  { height: 100%; border-radius: 20px; background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444); }
+
+/* ── EMOTION GRID ── */
+.emo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+.emo-item label { font-size: 0.73rem; color: var(--slate); text-transform: capitalize; display: flex; justify-content: space-between; margin-bottom: 0.2rem; }
+.emo-track { background: #f1f5f9; border-radius: 8px; height: 5px; overflow: hidden; }
+.emo-fill  { height: 100%; border-radius: 8px; }
+
+/* ── MEET LINK ── */
+.meet-link-box {
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  border-radius: 12px; padding: 1rem 1.2rem;
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+}
+.meet-link-box .ml-text { flex: 1; }
+.meet-link-box h4 { font-size: 0.92rem; font-weight: 700; color: #1d4ed8; margin-bottom: 0.2rem; }
+.meet-link-box p  { font-size: 0.78rem; color: #3b82f6; }
+.join-meet-btn {
+  padding: 0.6rem 1.4rem; background: #2563eb; color: #fff; border: none; border-radius: 10px;
+  font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 700;
+  text-decoration: none; display: inline-block; white-space: nowrap; transition: all 0.2s;
+}
+.join-meet-btn:hover { background: #1d4ed8; transform: translateY(-1px); }
+
+/* ── CHAT HISTORY ── */
+.chat-log { display: flex; flex-direction: column; gap: 0.7rem; max-height: 500px; overflow-y: auto; padding-right: 0.3rem; }
+.chat-log::-webkit-scrollbar { width: 4px; }
+.chat-log::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+.chat-log::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+.msg-row { display: flex; flex-direction: column; }
+.msg-row.mine  { align-items: flex-end; }
+.msg-row.theirs{ align-items: flex-start; }
+.msg-row.system{ align-items: center; }
+
+.msg-bubble {
+  max-width: 75%; padding: 0.75rem 1rem; border-radius: 14px;
+  font-size: 0.88rem; line-height: 1.6; word-break: break-word;
+}
+.msg-bubble.mine   { background: var(--ink); color: #fff; border-bottom-right-radius: 4px; }
+.msg-bubble.theirs { background: #f1f5f9; color: var(--ink); border-bottom-left-radius: 4px; }
+.msg-bubble.system { background: #e5e7eb; color: var(--slate); font-size: 0.78rem; border-radius: 20px; text-align: center; max-width: 90%; }
+.msg-bubble a      { color: #60a5fa; }
+.msg-time { font-size: 0.68rem; color: var(--slate); margin-top: 0.2rem; padding: 0 0.2rem; }
+
+/* ── PAYMENT BOX ── */
+.payment-box { background: #f0fdf4; border: 1px solid #a7f3d0; border-radius: 12px; padding: 1rem; }
+.pay-row { display: flex; justify-content: space-between; padding: 0.4rem 0; font-size: 0.85rem; border-bottom: 1px solid #d1fae5; }
+.pay-row:last-child { border-bottom: none; }
+.pay-row span:first-child { color: var(--slate); }
+.pay-row span:last-child  { font-weight: 700; }
+
+/* ── ACTIONS ── */
+.action-row { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-top: 1.5rem; }
+.btn-back { padding: 0.7rem 1.5rem; background: var(--ink); color: #fff; border: none; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 700; text-decoration: none; display: inline-block; transition: all 0.2s; }
+.btn-back:hover { background: #2d2d4e; }
+.btn-outline { padding: 0.7rem 1.5rem; background: transparent; color: var(--ink); border: 2px solid #e5e7eb; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 600; text-decoration: none; display: inline-block; transition: all 0.2s; cursor: pointer; }
+.btn-outline:hover { border-color: var(--ink); }
+
+@media(max-width: 580px) { .emo-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hist-wrap">
+
+  <!-- HEADER -->
+  <div class="hist-header">
+    <div class="hist-icon">📋</div>
+    <div style="flex:1">
+      <h1>Your Session History</h1>
+      <p>A private record of your SafeVoice journey. Only you can access this with your session ID.</p>
+      <div class="hist-uuid">🔑 Session ID: {{ session.session_uuid }}</div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-box blue">
+      <div class="num">{{ messages | selectattr('sender_role', 'eq', 'therapist') | list | length }}</div>
+      <div class="lbl">Therapist Messages</div>
+    </div>
+    <div class="stat-box {% if session.risk_level=='High' %}red{% elif session.risk_level=='Moderate' %}amber{% else %}green{% endif %}">
+      <div class="num" style="font-size:1.4rem;margin-top:0.3rem">{{ session.risk_level or '—' }}</div>
+      <div class="lbl">Risk Level</div>
+    </div>
+    <div class="stat-box purple">
+      <div class="num">{{ messages | length }}</div>
+      <div class="lbl">Messages</div>
+    </div>
+    <div class="stat-box green">
+      <div class="num" style="font-size:1.2rem;margin-top:0.3rem">{{ session.status or '—' }}</div>
+      <div class="lbl">Status</div>
+    </div>
+  </div>
+
+  <!-- ANALYSIS RESULT -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-icon si-purple">📊</div>
+      <div>
+        <h3>Your AI Analysis</h3>
+        <p>From when you first shared your feelings</p>
+      </div>
+    </div>
+
+    {% set risk = (session.risk_level or 'Low').lower() %}
+    <div class="risk-band {{ risk }}">
+      <div class="risk-title">
+        {% if risk == 'high' %}🆘 High Risk — Immediate support recommended
+        {% elif risk == 'moderate' %}💛 Moderate — Therapy support recommended
+        {% else %}🌱 Low — You are doing okay
+        {% endif %}
+      </div>
+      <div class="risk-pill {{ risk }}">{{ session.risk_level }} Risk</div>
+    </div>
+
+    {% if session.severity_score is not none %}
+    <div class="sev-wrap">
+      {% set score = (session.severity_score * 100)|int if session.severity_score <= 1 else session.severity_score|int %}
+      <div class="sev-label"><span>Severity Score</span><span>{{ score }} / 100</span></div>
+      <div class="sev-track"><div class="sev-fill" style="width:{{ score }}%"></div></div>
+    </div>
+    {% endif %}
+
+    {% if session.emotion_scores %}
+    {% set emotions = session.emotion_scores | from_json %}
+    <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--slate);margin-bottom:0.6rem">Emotion Profile</div>
+    <div class="emo-grid">
+      {% for label, val in emotions.items() %}
+      {% set pct = (val * 100)|int %}
+      <div class="emo-item">
+        <label>
+          <span>{{ label }}</span>
+          <span style="font-weight:700;color:
+            {% if label=='fear' %}#ef4444{% elif label=='sadness' %}#6366f1
+            {% elif label=='anger' %}#f59e0b{% elif label=='joy' %}#10b981
+            {% else %}#94a3b8{% endif %}">{{ pct }}%</span>
+        </label>
+        <div class="emo-track">
+          <div class="emo-fill" style="width:{{ pct }}%;background:
+            {% if label=='fear' %}#ef4444{% elif label=='sadness' %}#6366f1
+            {% elif label=='anger' %}#f59e0b{% elif label=='joy' %}#10b981
+            {% else %}#94a3b8{% endif %}"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- GOOGLE MEET LINK (if therapist shared one) -->
+  {% if session.meet_link %}
+  <div class="section">
+    <div class="section-head">
+      <div class="section-icon si-blue">🎥</div>
+      <div>
+        <h3>Video Session Link</h3>
+        <p>Your therapist shared this link. You can join with text and voice.</p>
+      </div>
+    </div>
+    <div class="meet-link-box">
+      <div class="ml-text">
+        <h4>🎥 Google Meet Session</h4>
+        <p>{{ session.meet_link }}</p>
+      </div>
+      <a class="join-meet-btn" href="{{ session.meet_link }}" target="_blank" rel="noopener">
+        Join Meeting →
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- THERAPIST INFO -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-icon si-green">💚</div>
+      <div>
+        <h3>Your Therapist</h3>
+        <p>Assigned after payment</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+      <div style="width:50px;height:50px;border-radius:50%;background:#d1fae5;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0">💚</div>
+      <div>
+        <div style="font-weight:700;font-size:0.95rem">
+          {% if session.assigned_therapist %}
+            {{ session.assigned_therapist.full_name or session.assigned_therapist.username }}
+          {% else %}
+            Being assigned…
+          {% endif %}
+        </div>
+        <div style="font-size:0.8rem;color:var(--slate)">
+          {% if session.assigned_therapist %}
+            {{ session.assigned_therapist.specialization or 'Licensed Counsellor' }}
+          {% else %}
+            You will be matched shortly
+          {% endif %}
+        </div>
+      </div>
+      {% if session.status == 'Assigned' and session.is_paid %}
+      <a href="/survivor/chat/{{ session.session_uuid }}" class="btn-back" style="margin-left:auto">
+        💬 Continue Chat →
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- CHAT HISTORY -->
+  {% if messages %}
+  <div class="section">
+    <div class="section-head">
+      <div class="section-icon si-purple">💬</div>
+      <div>
+        <h3>Chat History</h3>
+        <p>{{ messages | length }} message{{ 's' if messages|length != 1 }} in this session</p>
+      </div>
+    </div>
+
+    <div class="chat-log">
+      {% for msg in messages %}
+        {% if msg.sender_role == 'survivor' %}
+          <div class="msg-row mine">
+            <div class="msg-bubble mine">{{ msg.message }}</div>
+            <div class="msg-time">You · {{ msg.timestamp.strftime('%b %d, %H:%M') }}</div>
+          </div>
+        {% elif msg.sender_role == 'therapist' %}
+          <div class="msg-row theirs">
+            <div class="msg-bubble theirs">
+              {# Make links clickable #}
+              {% if 'http' in msg.message %}
+                {% for part in msg.message.split('\n') %}
+                  {% if part.startswith('http') %}
+                    <a href="{{ part }}" target="_blank" rel="noopener">{{ part }}</a>
+                  {% else %}
+                    {{ part }}<br/>
+                  {% endif %}
+                {% endfor %}
+              {% else %}
+                {{ msg.message }}
+              {% endif %}
+            </div>
+            <div class="msg-time">Therapist · {{ msg.timestamp.strftime('%b %d, %H:%M') }}</div>
+          </div>
+        {% else %}
+          <div class="msg-row system">
+            <div class="msg-bubble system">{{ msg.message }}</div>
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- PAYMENT RECORD -->
+  {% if payment %}
+  <div class="section">
+    <div class="section-head">
+      <div class="section-icon si-gold">💳</div>
+      <div>
+        <h3>Payment Record</h3>
+        <p>Your anonymous payment receipt</p>
+      </div>
+    </div>
+    <div class="payment-box">
+      <div class="pay-row"><span>Plan</span><span>{{ payment.plan.name if payment.plan else '—' }}</span></div>
+      <div class="pay-row"><span>Amount</span><span>₹{{ (payment.amount_paise // 100)|int }}</span></div>
+      <div class="pay-row"><span>Status</span><span style="color:#10b981;font-weight:800">✅ Paid</span></div>
+      <div class="pay-row"><span>Payment ID</span><span style="font-size:0.78rem">{{ payment.razorpay_payment_id or '—' }}</span></div>
+      <div class="pay-row"><span>Date</span><span>{{ payment.paid_at.strftime('%d %b %Y, %H:%M') if payment.paid_at else '—' }}</span></div>
+    </div>
+    <div style="margin-top:0.8rem">
+      <a href="/payment/receipt/{{ payment.payment_ref }}" class="btn-outline" style="font-size:0.85rem">🧾 Full Receipt →</a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ACTION BUTTONS -->
+  <div class="action-row">
+    <a href="/survivor" class="btn-back">← Back to Portal</a>
+    {% if session.is_paid and session.status != 'Resolved' %}
+    <a href="/survivor/chat/{{ session.session_uuid }}" class="btn-back" style="background:#10b981">
+      💬 Continue Session →
+    </a>
+    {% endif %}
+    <button class="btn-outline" onclick="copyUUID()">📋 Copy Session ID</button>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyUUID() {
+  const uuid = "{{ session.session_uuid }}";
+  navigator.clipboard.writeText(uuid).then(() => {
+    alert('Session ID copied to clipboard!\n\nSave this: ' + uuid);
+  }).catch(() => {
+    prompt('Copy your Session ID:', uuid);
+  });
+}
+</script>
+{% endblock %}

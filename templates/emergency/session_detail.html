@@ -1,0 +1,547 @@
+{% extends "base.html" %}
+{% block title %}Session — SafeVoice{% endblock %}
+{% block extra_css %}
+<style>
+.sl { display:grid; grid-template-columns:300px 1fr; height:calc(100vh - 64px); }
+
+/* ── INFO PANEL ── */
+.info-panel {
+  background:#fff; border-right:1px solid #e5e7eb;
+  overflow-y:auto; padding:1.2rem; display:flex; flex-direction:column; gap:1rem;
+}
+.info-panel h2 { font-family:'Cormorant Garamond',serif; font-size:1.2rem; font-weight:500; }
+.info-sec h4 { font-size:0.72rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--slate); margin-bottom:0.6rem; }
+.info-row { display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.4rem; }
+.info-row span:first-child { color:var(--slate); }
+.info-row span:last-child { font-weight:600; }
+
+.sess-counter {
+  background:linear-gradient(135deg,#dbeafe,#bfdbfe);
+  border-radius:12px; padding:0.9rem 1rem; text-align:center;
+}
+.sess-counter .big { font-family:'Cormorant Garamond',serif; font-size:2.5rem; font-weight:600; color:#1d4ed8; line-height:1; }
+.sess-counter .lbl { font-size:0.75rem; font-weight:700; color:#3b82f6; text-transform:uppercase; letter-spacing:0.08em; }
+
+.meet-link-panel { background:#f0fdf4; border-radius:12px; padding:1rem; }
+.meet-link-panel h4 { color:#15803d; margin-bottom:0.6rem; }
+.meet-input-sm {
+  width:100%; padding:0.6rem 0.8rem; border-radius:8px; border:2px solid #bbf7d0;
+  font-size:0.82rem; font-family:'DM Sans',sans-serif; margin-bottom:0.5rem;
+  transition:border 0.2s;
+}
+.meet-input-sm:focus { outline:none; border-color:#4ade80; }
+.send-meet-btn {
+  width:100%; padding:0.6rem; background:#15803d; color:#fff; border:none;
+  border-radius:8px; font-family:'DM Sans',sans-serif; font-size:0.85rem;
+  font-weight:700; cursor:pointer; transition:background 0.2s;
+}
+.send-meet-btn:hover { background:#166534; }
+.current-link { font-size:0.72rem; color:#15803d; word-break:break-all; margin-top:0.3rem; }
+
+.emo-row { display:flex; flex-direction:column; gap:0.45rem; }
+.emo-item { display:flex; flex-direction:column; gap:0.2rem; }
+.emo-label-row { display:flex; justify-content:space-between; font-size:0.75rem; }
+.emo-bg { background:#f1f5f9; border-radius:8px; height:5px; overflow:hidden; }
+.emo-fill { height:100%; border-radius:8px; }
+
+.quote-box {
+  background:#fce4ec; border-radius:10px; padding:0.9rem;
+  font-size:0.82rem; color:#880e4f; line-height:1.6;
+  font-style:italic; border-left:3px solid var(--rose);
+}
+
+.notes-txt {
+  width:100%; min-height:90px; padding:0.7rem; border-radius:8px;
+  border:2px solid #e5e7eb; font-family:'DM Sans',sans-serif; font-size:0.82rem; resize:vertical;
+}
+.notes-txt:focus { outline:none; border-color:var(--sage); }
+
+/* ── CHAT MAIN ── */
+.chat-main { display:flex; flex-direction:column; background:#f8f9fa; overflow:hidden; }
+
+/* chat header with media controls for therapist */
+.chat-hdr {
+  background:#fff; padding:0.9rem 1.2rem;
+  border-bottom:1px solid #e5e7eb;
+  display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap;
+}
+.surv-avatar { width:38px;height:38px;border-radius:50%;background:#fce4ec;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0; }
+.hdr-info h3 { font-size:0.92rem; font-weight:700; }
+.hdr-info p  { font-size:0.75rem; color:var(--slate); }
+
+/* MEDIA CONTROL BUTTONS — therapist has video+voice+text */
+.media-controls { margin-left:auto; display:flex; gap:0.5rem; }
+.mc-btn {
+  padding:0.45rem 0.9rem; border-radius:20px; border:2px solid #e5e7eb;
+  background:#fff; font-family:'DM Sans',sans-serif; font-size:0.8rem; font-weight:600;
+  cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:0.35rem;
+}
+.mc-btn.active  { background:var(--ink); color:#fff; border-color:var(--ink); }
+.mc-btn.active.video-btn { background:#3b82f6; border-color:#3b82f6; }
+.mc-btn.active.voice-btn { background:#ef4444; border-color:#ef4444; }
+.mc-btn:hover { border-color:var(--ink); }
+
+/* VIDEO AREA (for therapist) */
+.video-area {
+  background:#0f1923; border-bottom:1px solid #1e293b;
+  display:none; align-items:center; justify-content:center;
+  gap:1rem; padding:1rem; min-height:220px; flex-wrap:wrap;
+}
+.video-box {
+  background:#1e293b; border-radius:12px; overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+  position:relative; flex:1; min-width:200px; max-width:320px; height:180px;
+}
+.video-box video { width:100%; height:100%; object-fit:cover; border-radius:12px; }
+.video-placeholder { color:rgba(255,255,255,0.4); font-size:0.85rem; text-align:center; }
+.video-label { position:absolute; bottom:0.4rem; left:0.6rem; background:rgba(0,0,0,0.6); color:#fff; font-size:0.68rem; padding:0.2rem 0.5rem; border-radius:6px; }
+.video-controls {
+  display:flex; flex-direction:column; gap:0.5rem; align-items:center;
+}
+.vc-btn {
+  width:44px;height:44px;border-radius:50%;border:none;cursor:pointer;
+  font-size:1rem;display:flex;align-items:center;justify-content:center;
+  transition:all 0.2s;
+}
+.vc-btn.cam  { background:#3b82f6; color:#fff; }
+.vc-btn.mic  { background:#10b981; color:#fff; }
+.vc-btn.end  { background:#ef4444; color:#fff; }
+.vc-btn.muted{ background:#6b7280; }
+
+/* MESSAGES */
+.msgs-area { flex:1; overflow-y:auto; padding:1.2rem; display:flex; flex-direction:column; gap:0.9rem; }
+.msg { max-width:70%; padding:0.8rem 1rem; border-radius:14px; font-size:0.9rem; line-height:1.6; word-break:break-word; }
+.msg-survivor  { background:var(--ink); color:#fff; align-self:flex-end; border-bottom-right-radius:4px; }
+.msg-therapist { background:#fff; color:var(--ink); align-self:flex-start; border-bottom-left-radius:4px; box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+.msg-system    { align-self:center; background:#e5e7eb; color:var(--slate); font-size:0.78rem; padding:0.3rem 1rem; border-radius:20px; max-width:85%; text-align:center; }
+.msg-time      { font-size:0.68rem; opacity:0.5; margin-top:0.25rem; text-align:right; }
+.msg a         { color:inherit; font-weight:700; text-decoration:underline; }
+
+/* INPUT AREA */
+.input-area { background:#fff; padding:0.9rem 1.2rem; border-top:1px solid #e5e7eb; }
+.input-row  { display:flex; gap:0.6rem; align-items:flex-end; }
+#msg-input  { flex:1; padding:0.75rem 1rem; border-radius:12px; border:2px solid #e5e7eb; font-family:'DM Sans',sans-serif; font-size:0.9rem; resize:none; max-height:120px; transition:border 0.2s; }
+#msg-input:focus { outline:none; border-color:var(--sage); }
+.send-btn   { width:44px;height:44px;border-radius:12px;background:var(--sage);border:none;color:#fff;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+
+/* voice record btn */
+.voice-rec-row { display:flex; align-items:center; gap:0.6rem; margin-top:0.5rem; }
+.vrec-btn { padding:0.4rem 1rem; border-radius:20px; border:2px solid #e5e7eb; background:transparent; cursor:pointer; font-size:0.8rem; font-weight:600; color:var(--slate); transition:all 0.2s; }
+.vrec-btn.rec { background:#ef4444; color:#fff; border-color:#ef4444; }
+
+/* quick chips */
+.chips { display:flex; flex-wrap:wrap; gap:0.35rem; margin-top:0.5rem; }
+.chip { padding:0.3rem 0.75rem; border-radius:20px; border:1px solid #d1d5db; background:transparent; font-size:0.75rem; cursor:pointer; color:var(--slate); transition:all 0.2s; font-family:'DM Sans',sans-serif; }
+.chip:hover { background:var(--sage); color:#fff; border-color:var(--sage); }
+
+@media(max-width:768px) { .sl { grid-template-columns:1fr; } .info-panel { display:none; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sl">
+
+  <!-- ── LEFT INFO PANEL ── -->
+  <aside class="info-panel">
+    <div>
+      <h2>Session</h2>
+      <div style="font-size:0.72rem;color:var(--slate)">Anonymous — you cannot see their real identity</div>
+    </div>
+
+    <!-- Session counter -->
+    <div class="sess-counter">
+      <div class="big" id="sess-count-display">{{ 0 or 0 }}</div>
+      <div class="lbl">Sessions Held</div>
+    </div>
+
+    <!-- Case summary -->
+    <div class="info-sec">
+      <h4>Case Summary</h4>
+      <div class="info-row"><span>Alias</span><span>{{ session.alias or 'Anonymous' }}</span></div>
+      <div class="info-row"><span>Risk</span>
+        <span>{% if session.risk_level=='High' %}<span class="badge-high">High</span>
+        {% elif session.risk_level=='Moderate' %}<span class="badge-moderate">Moderate</span>
+        {% else %}<span class="badge-low">Low</span>{% endif %}</span>
+      </div>
+      <div class="info-row"><span>Severity</span>
+        <span>{{ (session.severity_score*100)|int if session.severity_score and session.severity_score<=1 else session.severity_score|int }}/100</span>
+      </div>
+      <div class="info-row"><span>Status</span><span>{{ session.status }}</span></div>
+      <div class="info-row"><span>Date</span><span>{{ session.created_at.strftime('%b %d, %H:%M') }}</span></div>
+    </div>
+
+    <!-- Google Meet link sender -->
+    <div class="meet-link-panel">
+      <h4>🎥 Video Call Link</h4>
+      <input class="meet-input-sm" id="meet-link-field" type="url"
+             value="{{ session.meet_link or '' }}"
+             placeholder="https://meet.google.com/abc-defg-hij"/>
+      <button class="send-meet-btn" onclick="sendMeetLink()">
+        📨 Send Link to Survivor
+      </button>
+      {% if session.meet_link %}
+      <div class="current-link">✅ Current: <a href="{{ session.meet_link }}" target="_blank" style="color:#15803d">Open meeting</a></div>
+      {% endif %}
+      <div style="font-size:0.7rem;color:#6b7280;margin-top:0.4rem">Survivor gets the link as a chat message and can join with text+voice only.</div>
+    </div>
+
+    <!-- Emotion profile -->
+    {% if emotion_data %}
+    <div class="info-sec">
+      <h4>Emotion Profile</h4>
+      <div class="emo-row">
+        {% for label, score in emotion_data.items() %}
+        <div class="emo-item">
+          <div class="emo-label-row">
+            <span style="font-size:0.75rem;color:var(--slate)">{{ label }}</span>
+            <span style="font-size:0.75rem;font-weight:600">{{ (score*100)|int }}%</span>
+          </div>
+          <div class="emo-bg">
+            <div class="emo-fill" style="width:{{ (score*100)|int }}%;background:
+              {% if label=='fear' %}#ef4444{% elif label=='sadness' %}#6366f1
+              {% elif label=='anger' %}#f59e0b{% elif label=='joy' %}#10b981
+              {% else %}#94a3b8{% endif %}"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- What they shared -->
+    <div class="info-sec">
+      <h4>What They Shared</h4>
+      <div class="quote-box">{{ session.input_text[:300] }}{% if session.input_text|length > 300 %}…{% endif %}</div>
+    </div>
+
+    <!-- Therapist notes -->
+    <div class="info-sec">
+      <h4>Private Notes</h4>
+      <textarea class="notes-txt" id="notes">{{ session.notes or '' }}</textarea>
+      <div style="display:flex;gap:0.5rem;margin-top:0.5rem">
+        <button class="btn btn-sage btn-sm" onclick="resolveSession()">✅ Resolve</button>
+        <button class="btn btn-outline btn-sm" onclick="saveNotes()">💾 Save</button>
+      </div>
+    </div>
+
+    <a href="/therapist" class="btn btn-outline btn-sm">← Dashboard</a>
+  </aside>
+
+  <!-- ── MAIN CHAT AREA ── -->
+  <div class="chat-main">
+
+    <!-- Header with media controls -->
+    <div class="chat-hdr">
+      <div class="surv-avatar">🌸</div>
+      <div class="hdr-info">
+        <h3>{{ session.alias or 'Anonymous Survivor' }}</h3>
+        <p>{{ session.risk_level }} Risk · Text + Voice + Video available for you</p>
+      </div>
+      <!-- THERAPIST MEDIA CONTROLS -->
+      <div class="media-controls">
+        <button class="mc-btn text-btn active" id="btn-text-mode" onclick="setMode('text')" title="Text chat">
+          💬 Text
+        </button>
+        <button class="mc-btn voice-btn" id="btn-voice-mode" onclick="setMode('voice')" title="Voice message">
+          🎙️ Voice
+        </button>
+        <button class="mc-btn video-btn" id="btn-video-mode" onclick="setMode('video')" title="Start video call">
+          🎥 Video
+        </button>
+      </div>
+    </div>
+
+    <!-- VIDEO AREA (shown when video mode active) -->
+    <div class="video-area" id="video-area">
+      <div class="video-box" id="local-video-box">
+        <video id="local-video" autoplay muted playsinline></video>
+        <div class="video-label">You (Therapist)</div>
+      </div>
+      <div class="video-controls">
+        <button class="vc-btn cam"  id="cam-btn"  onclick="toggleCam()"  title="Toggle camera">📷</button>
+        <button class="vc-btn mic"  id="mic-btn2" onclick="toggleMic()"  title="Toggle microphone">🎤</button>
+        <button class="vc-btn end"  onclick="endVideo()" title="End video">📵</button>
+      </div>
+      <div class="video-box">
+        <div class="video-placeholder">
+          <div style="font-size:2rem;margin-bottom:0.5rem">🌸</div>
+          <div>Survivor connects via Google Meet link you sent them</div>
+        </div>
+        <div class="video-label">{{ session.alias or 'Survivor' }}</div>
+      </div>
+    </div>
+
+    <!-- MESSAGES -->
+    <div class="msgs-area" id="messages">
+      <div class="msg msg-system">
+        🔒 This session is anonymous. Lead with empathy, validation, and hope.
+      </div>
+      {% for msg in messages %}
+        <div class="msg msg-{{ msg.sender_role }}">
+          {{ msg.message }}
+          <div class="msg-time">{{ msg.timestamp.strftime('%H:%M') }}</div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- INPUT AREA -->
+    <div class="input-area" id="input-area">
+
+      <!-- Text input row -->
+      <div id="text-input-row">
+        <div class="input-row">
+          <textarea id="msg-input" rows="1"
+            placeholder="Type with empathy and care…"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendText();}"></textarea>
+          <button class="send-btn" onclick="sendText()">→</button>
+        </div>
+        <!-- Quick supportive responses -->
+        <div class="chips">
+          <button class="chip" onclick="quickSend('I hear you. You are not alone.')">I hear you</button>
+          <button class="chip" onclick="quickSend('What you\'re feeling is completely valid.')">Validate</button>
+          <button class="chip" onclick="quickSend('You are incredibly brave for sharing this.')">Acknowledge</button>
+          <button class="chip" onclick="quickSend('Can you tell me more about what happened?')">Ask more</button>
+          <button class="chip" onclick="quickSend('You are safe here. Take your time.')">You\'re safe</button>
+          <button class="chip" onclick="quickSend('Let\'s breathe together. Inhale 4 counts… hold 4… exhale 6.')">Breathing</button>
+          <button class="chip" onclick="quickSend('You deserve to heal, and I\'m here for that journey with you.')">Give hope</button>
+        </div>
+      </div>
+
+      <!-- Voice input row (shown in voice mode) -->
+      <div id="voice-input-row" style="display:none">
+        <div class="voice-rec-row">
+          <button class="vrec-btn" id="vrec-btn" onclick="toggleVoiceRec()">🎙️ Start Recording</button>
+          <span id="vrec-status" style="font-size:0.8rem;color:var(--slate)"></span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const SESSION_UUID  = "{{ session.session_uuid }}";
+const socket        = io();
+socket.emit('join', { room: SESSION_UUID });
+
+// ── RECEIVE MESSAGES ──────────────────────────────────────────────
+socket.on('receive_message', data => {
+  if (data.sender_role === 'survivor') {
+    appendMsg(data.message, 'survivor', data.timestamp);
+  }
+});
+
+socket.on('session_accepted', data => {
+  appendSystem('✅ Session started with ' + (data.therapist_name || 'therapist'));
+});
+
+// ── MODE SWITCHING (text / voice / video) ─────────────────────────
+let currentMode = 'text';
+let localStream = null;
+let camOn = true, micOn = true;
+
+function setMode(mode) {
+  currentMode = mode;
+  ['text','voice','video'].forEach(m => {
+    document.getElementById('btn-' + m + '-mode').classList.toggle('active', m === mode);
+  });
+  document.getElementById('text-input-row').style.display  = mode === 'text'  ? 'block' : 'none';
+  document.getElementById('voice-input-row').style.display = mode === 'voice' ? 'block' : 'none';
+
+  const videoArea = document.getElementById('video-area');
+  if (mode === 'video') {
+    videoArea.style.display = 'flex';
+    startVideo();
+  } else {
+    videoArea.style.display = 'none';
+    if (mode !== 'video' && localStream) {
+      // Don't stop stream if just switching away temporarily
+    }
+  }
+}
+
+// ── VIDEO (therapist-side camera) ─────────────────────────────────
+async function startVideo() {
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    document.getElementById('local-video').srcObject = localStream;
+    camOn = true; micOn = true;
+    document.getElementById('cam-btn').textContent  = '📷';
+    document.getElementById('mic-btn2').textContent = '🎤';
+    appendSystem('📹 You started your camera. Survivor will join via the Meet link you shared.');
+  } catch(e) {
+    appendSystem('❌ Camera/mic access denied. Check browser permissions.');
+    setMode('text');
+  }
+}
+
+function toggleCam() {
+  if (!localStream) return;
+  camOn = !camOn;
+  localStream.getVideoTracks().forEach(t => t.enabled = camOn);
+  document.getElementById('cam-btn').textContent = camOn ? '📷' : '🚫';
+  document.getElementById('cam-btn').classList.toggle('muted', !camOn);
+}
+
+function toggleMic() {
+  if (!localStream) return;
+  micOn = !micOn;
+  localStream.getAudioTracks().forEach(t => t.enabled = micOn);
+  document.getElementById('mic-btn2').textContent = micOn ? '🎤' : '🔇';
+  document.getElementById('mic-btn2').classList.toggle('muted', !micOn);
+}
+
+function endVideo() {
+  if (localStream) {
+    localStream.getTracks().forEach(t => t.stop());
+    localStream = null;
+  }
+  document.getElementById('local-video').srcObject = null;
+  setMode('text');
+  appendSystem('📵 Video ended.');
+}
+
+// ── VOICE RECORDING (therapist sends voice messages) ──────────────
+let voiceRec = null, voiceChunks = [], voiceIsRec = false;
+
+async function toggleVoiceRec() {
+  const btn    = document.getElementById('vrec-btn');
+  const status = document.getElementById('vrec-status');
+
+  if (!voiceIsRec) {
+    voiceChunks = [];
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => null);
+    if (!stream) { status.textContent = 'Mic denied'; return; }
+
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
+    voiceRec = new MediaRecorder(stream, { mimeType });
+    voiceRec.ondataavailable = e => { if (e.data.size > 0) voiceChunks.push(e.data); };
+    voiceRec.onstop = async () => {
+      const blob = new Blob(voiceChunks, { type: mimeType });
+      stream.getTracks().forEach(t => t.stop());
+      status.textContent = 'Transcribing…';
+
+      // Send to backend for transcription
+      const fd = new FormData();
+      fd.append('audio', blob, 'voice.webm');
+      try {
+        const res  = await fetch('/api/analyse-audio', { method: 'POST', body: fd });
+        const data = await res.json();
+        const text = data.transcribed_text || '[Voice message]';
+        sendChatMessage('🎙️ ' + text);
+        status.textContent = '';
+      } catch(e) {
+        status.textContent = 'Transcription failed — type instead';
+      }
+    };
+
+    voiceRec.start(200);
+    voiceIsRec = true;
+    btn.classList.add('rec');
+    btn.textContent = '⏹️ Stop Recording';
+    status.textContent = '🔴 Recording…';
+
+  } else {
+    voiceRec.stop();
+    voiceIsRec = false;
+    btn.classList.remove('rec');
+    btn.textContent = '🎙️ Start Recording';
+  }
+}
+
+// ── TEXT MESSAGING ─────────────────────────────────────────────────
+function sendText() {
+  const inp  = document.getElementById('msg-input');
+  const text = inp.value.trim();
+  if (!text) return;
+  sendChatMessage(text);
+  inp.value = '';
+}
+
+function quickSend(text) { sendChatMessage(text); }
+
+function sendChatMessage(text) {
+  socket.emit('send_message', { room: SESSION_UUID, message: text, sender_role: 'therapist' });
+  appendMsg(text, 'therapist', nowTime());
+}
+
+// ── GOOGLE MEET LINK ───────────────────────────────────────────────
+async function sendMeetLink() {
+  const link = document.getElementById('meet-link-field').value.trim();
+  if (!link) { alert('Please paste a Google Meet or Zoom link first.'); return; }
+
+  const res = await fetch(`/api/therapist/set-meet-link/{{ session.session_uuid }}`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ meet_link: link }),
+  });
+  const data = await res.json();
+
+  if (data.success) {
+    // Update session counter display
+    document.getElementById('sess-count-display').textContent = 0;
+    appendSystem(`📨 Meet link sent to survivor. Sessions held: ${0}`);
+  } else {
+    alert('Failed to send link. Please try again.');
+  }
+}
+
+// ── SESSION ACTIONS ────────────────────────────────────────────────
+async function resolveSession() {
+  const notes = document.getElementById('notes').value;
+  const res   = await fetch(`/api/therapist/resolve/{{ session.session_uuid }}`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ notes }),
+  });
+  if ((await res.json()).success) {
+    alert('Session resolved. Great work!');
+    window.location.href = '/therapist';
+  }
+}
+
+async function saveNotes() {
+  const notes = document.getElementById('notes').value;
+  await fetch(`/api/therapist/resolve/{{ session.session_uuid }}`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ notes }),
+  });
+  appendSystem('💾 Notes saved.');
+}
+
+// ── HELPERS ────────────────────────────────────────────────────────
+function appendMsg(text, role, time) {
+  const area = document.getElementById('messages');
+  const div  = document.createElement('div');
+  div.className = 'msg msg-' + role;
+  // Make links clickable
+  const safeText = text.replace(/https?:\/\/[^\s]+/g, url =>
+    `<a href="${url}" target="_blank" rel="noopener">${url}</a>`
+  );
+  div.innerHTML = `${safeText}<div class="msg-time">${time}</div>`;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+
+function appendSystem(text) {
+  const area = document.getElementById('messages');
+  const div  = document.createElement('div');
+  div.className = 'msg msg-system';
+  div.textContent = text;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+
+function nowTime() {
+  return new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+
+window.onload = () => {
+  const area = document.getElementById('messages');
+  area.scrollTop = area.scrollHeight;
+};
+</script>
+{% endblock %}
