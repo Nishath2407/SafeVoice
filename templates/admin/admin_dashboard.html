@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Admin Control Portal — SafeVoice{% endblock %}
+
+{% block extra_css %}
+<style>
+.dash { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+.dash-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:2rem; flex-wrap:wrap; gap:1rem; }
+.dash-header h1 { font-family:'Cormorant Garamond',serif; font-size:2rem; font-weight:400; }
+
+/* STATS */
+.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1rem; margin-bottom:2rem; }
+.stat { background:#fff; border-radius:14px; padding:1.3rem; box-shadow:0 2px 12px rgba(0,0,0,0.06); border-left:4px solid #3b82f6; }
+.stat.amber { border-color:#f59e0b; }
+.stat.green { border-color:#10b981; }
+.stat.red   { border-color:#ef4444; }
+.stat .num  { font-family:'Cormorant Garamond',serif; font-size:2.2rem; font-weight:600; }
+.stat .lbl  { font-size:0.78rem; color:var(--slate); font-weight:600; }
+
+/* TABLES & LISTS */
+.card-panel { background:#fff; border-radius:14px; border:1px solid #e5e7eb; padding:1.5rem; margin-bottom:2rem; }
+.card-title { font-size:1.1rem; font-weight:700; margin-bottom:1rem; display:flex; align-items:center; justify-content:space-between; }
+.admin-table { width:100%; border-collapse:collapse; text-align:left; font-size:0.88rem; }
+.admin-table th { padding:0.75rem; border-bottom:2px solid #f3f4f6; color:var(--slate); font-weight:600; }
+.admin-table td { padding:0.85rem 0.75rem; border-bottom:1px solid #f3f4f6; vertical-align:middle; }
+
+/* BADGES & BUTTONS */
+.badge-pending { background:#fef3c7; color:#b45309; padding:0.2rem 0.6rem; border-radius:12px; font-size:0.75rem; font-weight:700; }
+.badge-active  { background:#d1fae5; color:#065f46; padding:0.2rem 0.6rem; border-radius:12px; font-size:0.75rem; font-weight:700; }
+.btn-approve { background:#10b981; color:#fff; border:none; padding:0.4rem 0.8rem; border-radius:6px; font-weight:600; cursor:pointer; }
+.btn-reject  { background:#ef4444; color:#fff; border:none; padding:0.4rem 0.8rem; border-radius:6px; font-weight:600; cursor:pointer; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dash">
+  <div class="dash-header">
+    <div>
+      <h1>Admin Master Console</h1>
+      <p style="color:var(--slate);font-size:0.9rem">System Governance & Verification</p>
+    </div>
+    <span style="background:#fee2e2;color:#991b1b;padding:0.4rem 1rem;border-radius:20px;font-size:0.82rem;font-weight:700;">👑 Master Lead</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat amber">
+      <div class="num">{{ pending_therapists | length }}</div>
+      <div class="lbl">Pending Therapists</div>
+    </div>
+    <div class="stat green">
+      <div class="num">{{ approved_therapists | length }}</div>
+      <div class="lbl">Verified Practitioners</div>
+    </div>
+    <div class="stat">
+      <div class="num">{{ total_sessions_count or 0 }}</div>
+      <div class="lbl">Total System Sessions</div>
+    </div>
+    <div class="stat red">
+      <div class="num">{{ emergency_dispatches_count or 0 }}</div>
+      <div class="lbl">Emergency Escalations</div>
+    </div>
+  </div>
+
+  <!-- THERAPIST VERIFICATION APPROVALS -->
+  <div class="card-panel">
+    <div class="card-title">
+      <span>👨‍⚕️ Pending Therapist Applications</span>
+      <span class="badge-pending">{{ pending_therapists | length }} Needs Review</span>
+    </div>
+
+    {% if pending_therapists %}
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>License ID</th>
+          <th>Specialization</th>
+          <th>Applied Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in pending_therapists %}
+        <tr id="therapist-row-{{ t.id }}">
+          <td><strong>{{ t.full_name }}</strong><br><small style="color:var(--slate)">{{ t.email }}</small></td>
+          <td><code>{{ t.license_number }}</code></td>
+          <td>{{ t.specialization }}</td>
+          <td>{{ t.created_at.strftime('%b %d, %Y') }}</td>
+          <td>
+            <button class="btn-approve" data-therapist-id="{{ t.id }}" onclick="verifyTherapist(this.dataset.therapistId, 'approve')">Approve</button>
+            <button class="btn-reject" data-therapist-id="{{ t.id }}" onclick="verifyTherapist(this.dataset.therapistId, 'reject')">Reject</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--slate); text-align:center; padding:1.5rem 0;">No therapist verifications pending.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function verifyTherapist(therapistId, action) {
+  if(!confirm(`Are you sure you want to ${action} this therapist?`)) return;
+  const res = await fetch(`/api/admin/therapist/${therapistId}/${action}`, { method: 'POST' });
+  const data = await res.json();
+  if (data.success) {
+    document.getElementById(`therapist-row-${therapistId}`).remove();
+  } else {
+    alert('Operation failed.');
+  }
+}
+</script>
+{% endblock %}
